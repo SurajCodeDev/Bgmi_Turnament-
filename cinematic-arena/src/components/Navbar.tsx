@@ -43,7 +43,7 @@ export function Navbar() {
             <div className="h-1.5 w-1.5 -rotate-45 bg-cyan-400" />
           </div>
           <span className="font-display text-sm font-black tracking-[0.25em] text-white">
-            CINEMATIC <span className="text-cyan-400">ARENA</span>
+            NEXT LEVEL <span className="text-cyan-400">ARENA</span>
           </span>
         </a>
 
@@ -66,6 +66,15 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
+          <a href="/matches" data-cursor="MATCHES" className="relative font-body text-xs font-semibold tracking-[0.2em] text-slate-400 transition-colors hover:text-white">
+            MATCHES
+          </a>
+          <a href="/bracket" data-cursor="BRACKET" className="relative font-body text-xs font-semibold tracking-[0.2em] text-slate-400 transition-colors hover:text-white">
+            BRACKET
+          </a>
+          <a href="/news" data-cursor="NEWS" className="relative font-body text-xs font-semibold tracking-[0.2em] text-slate-400 transition-colors hover:text-white">
+            NEWS
+          </a>
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
@@ -144,6 +153,18 @@ export function Navbar() {
                   {link.label}
                 </a>
               ))}
+              <a href="/matches" onClick={() => setOpen(false)} className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300">
+                MATCHES
+              </a>
+              <a href="/bracket" onClick={() => setOpen(false)} className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300">
+                BRACKET
+              </a>
+              <a href="/news" onClick={() => setOpen(false)} className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300">
+                NEWS
+              </a>
+              <a href="/rules" onClick={() => setOpen(false)} className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300">
+                RULES
+              </a>
               {user ? (
                 <>
                   {user.role === "admin" && (

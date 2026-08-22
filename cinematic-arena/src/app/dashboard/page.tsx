@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { getRegistrationsForUser, getTournament, getPlayers, getTeams } from "@/lib/store";
+import {
+  getRegistrationsForUser,
+  getTournament,
+  getPlayers,
+  getTeams,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "@/lib/store";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const [registrations] = useState(() => (user ? getRegistrationsForUser(user.id) : []));
+  const [notifications, setNotifications] = useState(() => getNotifications());
 
   if (loading) return null;
 
@@ -74,6 +83,72 @@ export default function DashboardPage() {
               <span className="mt-1 font-body text-[10px] font-semibold tracking-[0.3em] text-cyan-400">{s.label}</span>
             </motion.div>
           ))}
+        </div>
+
+        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="holo-panel scanline clip-corner p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">WALLET</h2>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">BALANCE</span>
+            </div>
+            <div className="mb-5 flex items-end justify-between border border-[#1a2134] bg-[#0a0d16]/60 p-5">
+              <div>
+                <p className="font-display text-3xl font-black text-cyan-400 text-glow">₹{(player?.earnings ? parseInt(player.earnings.replace(/[^\d]/g, ""), 10) : 24500).toLocaleString("en-IN")}</p>
+                <p className="mt-1 font-body text-[9px] tracking-[0.25em] text-slate-500">TOTAL EARNINGS</p>
+              </div>
+              <div className="flex gap-2">
+                <button className="btn-primary px-4 py-2 font-display text-[10px]">+ ADD FUNDS</button>
+                <button className="btn-ghost px-4 py-2 font-display text-[10px]">WITHDRAW</button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {[
+                { label: "Prize — BGMI Championship Series", amount: "+₹2,10,000", status: "CREDITED" },
+                { label: "Entry Fee — Rising Stars Cup", amount: "-₹99", status: "PAID" },
+                { label: "Prize — Community Clash", amount: "+₹75,000", status: "CREDITED" },
+              ].map((tx, i) => (
+                <div key={i} className="flex items-center justify-between border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
+                  <span className="font-body text-xs text-slate-400">{tx.label}</span>
+                  <span className={`font-display text-xs font-black ${tx.amount.startsWith("+") ? "text-cyan-400" : "text-red-400"}`}>{tx.amount}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="holo-panel scanline clip-corner p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">NOTIFICATIONS</h2>
+              <button
+                onClick={() => {
+                  markAllNotificationsRead();
+                  setNotifications(getNotifications());
+                }}
+                className="font-body text-[9px] tracking-[0.2em] text-slate-500 transition-colors hover:text-cyan-400"
+              >
+                MARK ALL READ
+              </button>
+            </div>
+            <div className="space-y-2">
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    markNotificationRead(n.id);
+                    setNotifications(getNotifications());
+                  }}
+                  className={`flex w-full items-start gap-3 border px-4 py-3 text-left transition-colors ${
+                    n.read ? "border-[#1a2134] bg-[#0a0d16]/40" : "border-cyan-400/30 bg-[#0a0d16]/70"
+                  }`}
+                >
+                  <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${n.read ? "bg-slate-600" : "bg-cyan-400"}`} />
+                  <div>
+                    <p className={`font-body text-xs ${n.read ? "text-slate-500" : "text-slate-200"}`}>{n.message}</p>
+                    <p className="mt-1 font-body text-[9px] tracking-[0.2em] text-slate-600">{n.type} · {n.date}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">

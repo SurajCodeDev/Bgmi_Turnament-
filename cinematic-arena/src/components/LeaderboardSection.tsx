@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { leaderboard } from "@/data/arena";
 
 const rankStyle = (i: number) => {
@@ -33,12 +32,9 @@ export function LeaderboardSection() {
 
           <div className="space-y-2">
             {leaderboard.map((t, i) => (
-              <motion.div
+              <a
                 key={t.id}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, amount: 0.3 }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
+                href={`/teams/${t.id}`}
                 data-cursor="VIEW"
                 className={`grid grid-cols-[40px_1fr_60px_60px_80px] items-center gap-2 border bg-[#0a0d16]/70 px-4 py-4 transition-colors hover:border-cyan-400/40 sm:grid-cols-[50px_1fr_90px_90px_120px] ${
                   i < 3 ? `border ${rankStyle(i)}` : "border-[#1a2134]"
@@ -59,7 +55,7 @@ export function LeaderboardSection() {
                 <span className="text-right font-body text-xs text-slate-400">{t.kills}</span>
                 <span className="text-right font-body text-xs text-slate-400">{t.wins}</span>
                 <span className="text-right font-display text-base font-black text-white">{t.points}</span>
-              </motion.div>
+              </a>
             ))}
           </div>
         </div>

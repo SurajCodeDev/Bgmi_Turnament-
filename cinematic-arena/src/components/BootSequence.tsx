@@ -57,7 +57,7 @@ export function BootSequence() {
                 <div className="h-2 w-2 -rotate-45 bg-cyan-400" />
               </div>
               <span className="font-display text-xl font-black tracking-[0.3em] text-white">
-                CINEMATIC <span className="text-cyan-400">ARENA</span>
+                NEXT LEVEL <span className="text-cyan-400">ARENA</span>
               </span>
             </motion.div>
 

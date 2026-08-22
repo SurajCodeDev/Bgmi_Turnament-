@@ -44,7 +44,7 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Tournament | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [toast, setToast] = useState("");
-  const [tab, setTab] = useState<"tournaments" | "overview">("tournaments");
+  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches">("tournaments");
 
   if (loading) return null;
 
@@ -144,7 +144,7 @@ export default function AdminPage() {
         </motion.div>
 
         <div className="mb-8 flex gap-1 border-b border-[#1a2134]">
-          {(["overview", "tournaments"] as const).map((tb) => (
+          {(["overview", "tournaments", "users", "matches"] as const).map((tb) => (
             <button
               key={tb}
               onClick={() => setTab(tb)}
@@ -321,6 +321,74 @@ export default function AdminPage() {
                 </div>
               </motion.div>
             )}
+          </div>
+        )}
+
+        {tab === "users" && (
+          <div className="space-y-3">
+            {users.map((u, i) => {
+              const userRegs = registrations.filter((r) => r.userId === u.id);
+              return (
+                <motion.div key={u.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="flex flex-col gap-3 border border-[#1a2134] bg-[#0a0d16]/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-base font-black text-cyan-400">
+                      {u.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-body text-sm font-semibold text-slate-200">{u.name}</p>
+                        <span className={`rounded-sm border px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] ${u.role === "admin" ? "border-red-500/50 text-red-400" : "border-cyan-400/40 text-cyan-400"}`}>
+                          {u.role.toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
+                        {u.email} · UID {u.uid} · {u.team}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-sm border border-[#1a2134] bg-[#05060a] px-3 py-1.5 font-body text-[10px] tracking-[0.15em] text-slate-400">
+                      {userRegs.length} REGISTRATIONS
+                    </span>
+                    <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">JOINED {u.createdAt.slice(0, 10)}</span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "matches" && (
+          <div className="space-y-3">
+            {[
+              { id: "M04", tournament: "BGMI Championship Series", map: "ERANGEL", status: "LIVE", room: "12345678", pass: "ARENA2024", time: "08:30 PM" },
+              { id: "M05", tournament: "BGMI Championship Series", map: "MIRAMAR", status: "UPCOMING", room: "87654321", pass: "NEXTLVL", time: "09:30 PM" },
+              { id: "M06", tournament: "BGMI Rising Stars Cup", map: "MIRAMAR", status: "UPCOMING", room: "TBD", pass: "TBD", time: "07:00 PM" },
+              { id: "M01", tournament: "BGMI Community Clash", map: "ERANGEL", status: "COMPLETED", room: "11112222", pass: "CLASH24", time: "05:00 PM" },
+            ].map((m, i) => (
+              <motion.div key={m.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="border border-[#1a2134] bg-[#0a0d16]/70 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="font-display text-sm font-black text-white">{m.id}</span>
+                    <div>
+                      <p className="font-body text-sm font-semibold text-slate-200">{m.tournament}</p>
+                      <p className="font-body text-[9px] tracking-[0.15em] text-slate-500">MAP {m.map} · {m.time}</p>
+                    </div>
+                  </div>
+                  <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] ${
+                    m.status === "LIVE" ? "border-red-500/50 text-red-400" : m.status === "UPCOMING" ? "border-cyan-400/50 text-cyan-400" : "border-slate-600/50 text-slate-400"
+                  }`}>
+                    {m.status}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[#1a2134] pt-3 font-body text-[10px] tracking-[0.15em] text-slate-500">
+                  <span>ROOM <span className="text-slate-300">{m.room}</span></span>
+                  <span>PASS <span className="text-slate-300">{m.pass}</span></span>
+                  <button className="ml-auto btn-primary px-4 py-1.5 font-display text-[9px]">EDIT ROOM</button>
+                  <button className="btn-ghost px-4 py-1.5 font-display text-[9px]">SUBMIT RESULT</button>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
       </div>

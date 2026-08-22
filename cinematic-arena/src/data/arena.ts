@@ -34,6 +34,7 @@ export interface Team {
   earnings: string;
   captain: string;
   roster: string[];
+  image: string;
 }
 
 export interface Player {
@@ -50,6 +51,7 @@ export interface Player {
   kd: number;
   winRate: number;
   earnings: string;
+  image: string;
 }
 
 export interface LiveMatch {
@@ -246,6 +248,7 @@ export const teams: Team[] = [
     placement: 1.8,
     earnings: "₹2,10,000",
     captain: "Viper",
+    image: "/images/bgmi-1.jpg",
     roster: ["Viper", "Blitz", "Cipher", "Frost", "Rogue"],
   },
   {
@@ -260,6 +263,7 @@ export const teams: Team[] = [
     placement: 2.3,
     earnings: "₹1,60,000",
     captain: "Apex",
+    image: "/images/bgmi-2.jpg",
     roster: ["Apex", "Shadow", "Kraken", "Echo", "Volt"],
   },
   {
@@ -274,6 +278,7 @@ export const teams: Team[] = [
     placement: 2.7,
     earnings: "₹1,25,000",
     captain: "Blaze",
+    image: "/images/bgmi-3.jpg",
     roster: ["Blaze", "Nitro", "Ghost", "Vortex", "Sage"],
   },
   {
@@ -288,6 +293,7 @@ export const teams: Team[] = [
     placement: 3.4,
     earnings: "₹90,000",
     captain: "Reaper",
+    image: "/images/bgmi-4.jpg",
     roster: ["Reaper", "Falcon", "Drift", "Onyx", "Titan"],
   },
   {
@@ -302,6 +308,7 @@ export const teams: Team[] = [
     placement: 3.9,
     earnings: "₹75,000",
     captain: "Fang",
+    image: "/images/bgmi-6.jpg",
     roster: ["Fang", "Venom", "Strike", "Hawk", "Cyclone"],
   },
   {
@@ -316,6 +323,7 @@ export const teams: Team[] = [
     placement: 4.2,
     earnings: "₹60,000",
     captain: "Outlaw",
+    image: "/images/bgmi-7.jpg",
     roster: ["Outlaw", "Maestro", "Zenith", "Comet", "Rider"],
   },
   {
@@ -330,6 +338,7 @@ export const teams: Team[] = [
     placement: 4.8,
     earnings: "₹40,000",
     captain: "Maverick",
+    image: "/images/bgmi-9.jpg",
     roster: ["Maverick", "Pulse", "Orion", "Dusk", "Flare"],
   },
   {
@@ -344,19 +353,20 @@ export const teams: Team[] = [
     placement: 5.1,
     earnings: "₹25,000",
     captain: "Storm",
+    image: "/images/bgmi-10.jpg",
     roster: ["Storm", "Raze", "Bolt", "Phantom", "Kilo"],
   },
 ];
 
 export const players: Player[] = [
-  { id: "p-001", name: "Viper", igl: "Nova", uid: "5401234567", team: "Team Nova", teamId: "team-nova", role: "IGL / Assault", matches: 128, wins: 24, kills: 643, kd: 5.02, winRate: 18.7, earnings: "₹8,50,000" },
-  { id: "p-002", name: "Apex", igl: "Titans", uid: "5407654321", team: "Team Titans", teamId: "team-titans", role: "IGL / Sniper", matches: 141, wins: 22, kills: 598, kd: 4.24, winRate: 15.6, earnings: "₹6,20,000" },
-  { id: "p-003", name: "Blaze", igl: "Phoenix", uid: "5402345678", team: "Team Phoenix", teamId: "team-phoenix", role: "Assault", matches: 110, wins: 19, kills: 571, kd: 5.19, winRate: 17.2, earnings: "₹4,90,000" },
-  { id: "p-004", name: "Reaper", igl: "Legacy", uid: "5408765432", team: "Team Legacy", teamId: "team-legacy", role: "Support", matches: 135, wins: 18, kills: 512, kd: 3.79, winRate: 13.3, earnings: "₹3,70,000" },
-  { id: "p-005", name: "Fang", igl: "Vipers", uid: "5403456789", team: "Team Vipers", teamId: "team-viper", role: "Assault", matches: 98, wins: 15, kills: 463, kd: 4.72, winRate: 15.3, earnings: "₹2,90,000" },
-  { id: "p-006", name: "Outlaw", igl: "Renegade", uid: "5409876543", team: "Team Renegade", teamId: "team-renegade", role: "IGL", matches: 120, wins: 14, kills: 428, kd: 3.56, winRate: 11.6, earnings: "₹2,30,000" },
-  { id: "p-007", name: "Maverick", igl: "Rogue", uid: "5404567890", team: "Team Rogue", teamId: "team-rogue", role: "Sniper", matches: 87, wins: 11, kills: 391, kd: 4.49, winRate: 12.6, earnings: "₹1,60,000" },
-  { id: "p-008", name: "Storm", igl: "Cyclone", uid: "5401098765", team: "Team Cyclone", teamId: "team-cyclone", role: "Assault", matches: 76, wins: 9, kills: 344, kd: 4.52, winRate: 11.8, earnings: "₹1,10,000" },
+  { id: "p-001", name: "Viper", igl: "Nova", uid: "5401234567", team: "Team Nova", teamId: "team-nova", role: "IGL / Assault", matches: 128, wins: 24, kills: 643, kd: 5.02, winRate: 18.7, earnings: "₹8,50,000", image: "/images/bgmi-5.jpg" },
+  { id: "p-002", name: "Apex", igl: "Titans", uid: "5407654321", team: "Team Titans", teamId: "team-titans", role: "IGL / Sniper", matches: 141, wins: 22, kills: 598, kd: 4.24, winRate: 15.6, earnings: "₹6,20,000", image: "/images/bgmi-6.jpg" },
+  { id: "p-003", name: "Blaze", igl: "Phoenix", uid: "5402345678", team: "Team Phoenix", teamId: "team-phoenix", role: "Assault", matches: 110, wins: 19, kills: 571, kd: 5.19, winRate: 17.2, earnings: "₹4,90,000", image: "/images/bgmi-7.jpg" },
+  { id: "p-004", name: "Reaper", igl: "Legacy", uid: "5408765432", team: "Team Legacy", teamId: "team-legacy", role: "Support", matches: 135, wins: 18, kills: 512, kd: 3.79, winRate: 13.3, earnings: "₹3,70,000", image: "/images/bgmi-8.jpg" },
+  { id: "p-005", name: "Fang", igl: "Vipers", uid: "5403456789", team: "Team Vipers", teamId: "team-viper", role: "Assault", matches: 98, wins: 15, kills: 463, kd: 4.72, winRate: 15.3, earnings: "₹2,90,000", image: "/images/bgmi-9.jpg" },
+  { id: "p-006", name: "Outlaw", igl: "Renegade", uid: "5409876543", team: "Team Renegade", teamId: "team-renegade", role: "IGL", matches: 120, wins: 14, kills: 428, kd: 3.56, winRate: 11.6, earnings: "₹2,30,000", image: "/images/bgmi-10.jpg" },
+  { id: "p-007", name: "Maverick", igl: "Rogue", uid: "5404567890", team: "Team Rogue", teamId: "team-rogue", role: "Sniper", matches: 87, wins: 11, kills: 391, kd: 4.49, winRate: 12.6, earnings: "₹1,60,000", image: "/images/bgmi-11.jpg" },
+  { id: "p-008", name: "Storm", igl: "Cyclone", uid: "5401098765", team: "Team Cyclone", teamId: "team-cyclone", role: "Assault", matches: 76, wins: 9, kills: 344, kd: 4.52, winRate: 11.8, earnings: "₹1,10,000", image: "/images/bgmi-12.jpg" },
 ];
 
 export const leaderboard: Team[] = [...teams].sort((a, b) => b.points - a.points);
@@ -413,4 +423,234 @@ export const navLinks = [
   { label: "LIVE", href: "#live" },
   { label: "LEADERBOARD", href: "#leaderboard" },
   { label: "CHAMPIONS", href: "#champions" },
+];
+
+export type MatchStatus = "LIVE" | "UPCOMING" | "COMPLETED";
+
+export interface Match {
+  id: string;
+  tournamentId: string;
+  tournament: string;
+  map: string;
+  mode: string;
+  date: string;
+  time: string;
+  status: MatchStatus;
+  teams: { name: string; tag: string; points: number }[];
+  roomId?: string;
+  password?: string;
+  stream?: string;
+}
+
+export const matches: Match[] = [
+  {
+    id: "M04",
+    tournamentId: "t-001",
+    tournament: "BGMI Championship Series",
+    map: "ERANGEL",
+    mode: "SQUAD",
+    date: "21 AUG",
+    time: "08:30 PM",
+    status: "LIVE",
+    teams: [
+      { name: "Team Nova", tag: "NV", points: 42 },
+      { name: "Team Titans", tag: "TT", points: 39 },
+      { name: "Team Phoenix", tag: "PX", points: 37 },
+      { name: "Team Legacy", tag: "LG", points: 31 },
+    ],
+    roomId: "12345678",
+    password: "ARENA2024",
+    stream: "youtube",
+  },
+  {
+    id: "M05",
+    tournamentId: "t-001",
+    tournament: "BGMI Championship Series",
+    map: "MIRAMAR",
+    mode: "SQUAD",
+    date: "21 AUG",
+    time: "09:30 PM",
+    status: "UPCOMING",
+    teams: [
+      { name: "Team Nova", tag: "NV", points: 0 },
+      { name: "Team Titans", tag: "TT", points: 0 },
+      { name: "Team Phoenix", tag: "PX", points: 0 },
+      { name: "Team Legacy", tag: "LG", points: 0 },
+    ],
+  },
+  {
+    id: "M06",
+    tournamentId: "t-002",
+    tournament: "BGMI Rising Stars Cup",
+    map: "MIRAMAR",
+    mode: "SQUAD",
+    date: "24 AUG",
+    time: "07:00 PM",
+    status: "UPCOMING",
+    teams: [
+      { name: "Team Renegade", tag: "RG", points: 0 },
+      { name: "Team Rogue", tag: "RQ", points: 0 },
+      { name: "Team Vipers", tag: "VP", points: 0 },
+      { name: "Team Cyclone", tag: "CY", points: 0 },
+    ],
+  },
+  {
+    id: "M01",
+    tournamentId: "t-006",
+    tournament: "BGMI Community Clash",
+    map: "ERANGEL",
+    mode: "SQUAD",
+    date: "15 AUG",
+    time: "05:00 PM",
+    status: "COMPLETED",
+    teams: [
+      { name: "Team Nova", tag: "NV", points: 55 },
+      { name: "Team Phoenix", tag: "PX", points: 48 },
+      { name: "Team Titans", tag: "TT", points: 41 },
+    ],
+  },
+  {
+    id: "M02",
+    tournamentId: "t-006",
+    tournament: "BGMI Community Clash",
+    map: "SANHOK",
+    mode: "SQUAD",
+    date: "15 AUG",
+    time: "06:00 PM",
+    status: "COMPLETED",
+    teams: [
+      { name: "Team Phoenix", tag: "PX", points: 38 },
+      { name: "Team Nova", tag: "NV", points: 35 },
+      { name: "Team Legacy", tag: "LG", points: 30 },
+    ],
+  },
+  {
+    id: "M03",
+    tournamentId: "t-006",
+    tournament: "BGMI Community Clash",
+    map: "LIVIK",
+    mode: "SQUAD",
+    date: "15 AUG",
+    time: "07:00 PM",
+    status: "COMPLETED",
+    teams: [
+      { name: "Team Titans", tag: "TT", points: 46 },
+      { name: "Team Nova", tag: "NV", points: 44 },
+      { name: "Team Renegade", tag: "RG", points: 28 },
+    ],
+  },
+];
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  excerpt: string;
+  image: string;
+}
+
+export const newsItems: NewsItem[] = [
+  {
+    id: "n-001",
+    title: "BGMI Championship Series Grand Final Lineup Announced",
+    category: "ANNOUNCEMENT",
+    date: "21 AUG 2024",
+    excerpt: "Top 16 teams have qualified for the grand finals. Prize pool ₹5,00,000 up for grabs on 22 AUG.",
+    image: "/images/bgmi-1.jpg",
+  },
+  {
+    id: "n-002",
+    title: "New Scouting Program for Rising Talents",
+    category: "COMMUNITY",
+    date: "19 AUG 2024",
+    excerpt: "Our scouting team is on the lookout for the next generation of BGMI stars. Apply with your stats.",
+    image: "/images/bgmi-3.jpg",
+  },
+  {
+    id: "n-003",
+    title: "Anti-Cheat Update: Fair Play Enforcement",
+    category: "UPDATE",
+    date: "17 AUG 2024",
+    excerpt: "Enhanced anti-cheat monitoring now active across all tournaments. Cheaters face permanent bans.",
+    image: "/images/bgmi-4.jpg",
+  },
+  {
+    id: "n-004",
+    title: "Prize Pool Boost for Pro League S3",
+    category: "ANNOUNCEMENT",
+    date: "15 AUG 2024",
+    excerpt: "Pro League S3 prize pool increased to ₹10,00,000. Registration now open to all verified teams.",
+    image: "/images/bgmi-8.jpg",
+  },
+];
+
+export interface Notification {
+  id: string;
+  type: "MATCH" | "RESULT" | "PAYMENT" | "ANNOUNCEMENT" | "DISPUTE";
+  message: string;
+  date: string;
+  read: boolean;
+}
+
+export const defaultNotifications: Notification[] = [
+  { id: "nt-1", type: "MATCH", message: "Your match M04 starts in 30 minutes on ERANGEL.", date: "21 AUG", read: false },
+  { id: "nt-2", type: "RESULT", message: "Team Nova wins Match M03 with 44 points.", date: "15 AUG", read: false },
+  { id: "nt-3", type: "PAYMENT", message: "Prize amount ₹2,10,000 credited to Team Nova wallet.", date: "15 AUG", read: true },
+  { id: "nt-4", type: "ANNOUNCEMENT", message: "Pro League S3 registration is now open.", date: "14 AUG", read: false },
+];
+
+export interface BracketRound {
+  name: string;
+  matches: { teamA: string; teamB: string; scoreA: number; scoreB: number; winner?: string }[];
+}
+
+export const bracket: BracketRound[] = [
+  {
+    name: "QUALIFIERS",
+    matches: [
+      { teamA: "Team Nova", teamB: "Team Cyclone", scoreA: 42, scoreB: 19, winner: "Team Nova" },
+      { teamA: "Team Titans", teamB: "Team Rogue", scoreA: 39, scoreB: 22, winner: "Team Titans" },
+      { teamA: "Team Phoenix", teamB: "Team Renegade", scoreA: 37, scoreB: 25, winner: "Team Phoenix" },
+      { teamA: "Team Legacy", teamB: "Team Vipers", scoreA: 31, scoreB: 28, winner: "Team Legacy" },
+    ],
+  },
+  {
+    name: "ROUND 16",
+    matches: [
+      { teamA: "Team Nova", teamB: "Team Legacy", scoreA: 48, scoreB: 33, winner: "Team Nova" },
+      { teamA: "Team Titans", teamB: "Team Phoenix", scoreA: 41, scoreB: 37, winner: "Team Titans" },
+    ],
+  },
+  {
+    name: "SEMIFINAL",
+    matches: [{ teamA: "Team Nova", teamB: "Team Titans", scoreA: 52, scoreB: 45, winner: "Team Nova" }],
+  },
+  {
+    name: "GRAND FINAL",
+    matches: [{ teamA: "Team Nova", teamB: "Team Phoenix", scoreA: 0, scoreB: 0 }],
+  },
+];
+
+export const faqs = [
+  {
+    q: "How do I register for a tournament?",
+    a: "Create a free account, open any tournament page and click JOIN TOURNAMENT. Pay the entry fee via wallet to confirm your slot.",
+  },
+  {
+    q: "What is the scoring system?",
+    a: "Placement points (1st=15, 2nd=12 ... 8th=3) plus +1 point per kill. Total = placement + kills + bonus.",
+  },
+  {
+    q: "How do I receive my prize money?",
+    a: "Winnings are credited to your NEXT LEVEL ARENA wallet within 24 hours of results approval. Withdraw via UPI/bank.",
+  },
+  {
+    q: "Is there any anti-cheat protection?",
+    a: "Yes. Every match is monitored and room access is verified. Cheaters are permanently banned and reported.",
+  },
+  {
+    q: "Can I join with my existing squad?",
+    a: "Absolutely. Register as a team captain and invite your 4-man squad. Substitute players are also supported.",
+  },
 ];

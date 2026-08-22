@@ -17,8 +17,8 @@ const body = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "CINEMATIC ARENA — BGMI Esports",
-  description: "The next generation of mobile esports. Live tournaments, real-time leaderboards, verified players and competitive BGMI events.",
+  title: "NEXT LEVEL ARENA — BGMI Esports",
+  description: "NEXT LEVEL ARENA — the next generation of BGMI mobile esports. Live tournaments, real-time leaderboards, verified players and competitive events.",
 };
 
 export default function RootLayout({

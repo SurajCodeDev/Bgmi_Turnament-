@@ -1,4 +1,4 @@
-import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, type Tournament } from "@/data/arena";
+import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, matches as seedMatches, defaultNotifications, type Tournament, type Notification } from "@/data/arena";
 
 export type { Tournament };
 
@@ -25,6 +25,7 @@ const KEYS = {
   users: "arena_users_v1",
   session: "arena_session_v1",
   registrations: "arena_registrations_v1",
+  notifications: "arena_notifications_v1",
 };
 
 function isBrowser() {
@@ -101,7 +102,7 @@ export function getUsers(): User[] {
     password: "admin123",
     role: "admin",
     uid: "5400000001",
-    team: "CINEMATIC ARENA",
+    team: "NEXT LEVEL ARENA",
     createdAt: "2024-08-01",
   };
   const demo: User = {
@@ -211,4 +212,32 @@ export function getTeams() {
 
 export function getPlayers() {
   return seedPlayers;
+}
+
+export function getTeam(id: string) {
+  return seedTeams.find((t) => t.id === id);
+}
+
+export function getPlayer(id: string) {
+  return seedPlayers.find((p) => p.id === id);
+}
+
+// ---------- Notifications ----------
+
+export function getNotifications(): Notification[] {
+  return load<Notification[]>(KEYS.notifications, defaultNotifications);
+}
+
+export function getUnreadCount(): number {
+  return getNotifications().filter((n) => !n.read).length;
+}
+
+export function markNotificationRead(id: string) {
+  const list = getNotifications().map((n) => (n.id === id ? { ...n, read: true } : n));
+  save(KEYS.notifications, list);
+}
+
+export function markAllNotificationsRead() {
+  const list = getNotifications().map((n) => ({ ...n, read: true }));
+  save(KEYS.notifications, list);
 }

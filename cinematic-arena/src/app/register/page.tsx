@@ -22,7 +22,7 @@ export default function RegisterPage() {
     return null;
   }
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     if (password.length < 6) {
@@ -38,19 +38,18 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const res = register({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        uid: uid.trim(),
-        team: team.trim() || "Team Solo",
-      });
-      if (!res.ok) {
-        setError(res.error || "Registration failed.");
-        setLoading(false);
-      }
-    }, 400);
+    await new Promise((r) => setTimeout(r, 400));
+    const res = await register({
+      name: name.trim(),
+      email: email.trim(),
+      password,
+      uid: uid.trim(),
+      team: team.trim() || "Team Solo",
+    });
+    if (!res.ok) {
+      setError(res.error || "Registration failed.");
+      setLoading(false);
+    }
   };
 
   const inputCls =

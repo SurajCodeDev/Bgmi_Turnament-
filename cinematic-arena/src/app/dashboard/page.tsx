@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -9,14 +9,17 @@ import {
   getPlayers,
   getTeams,
   getNotifications,
-  markNotificationRead,
-  markAllNotificationsRead,
+  type Registration,
 } from "@/lib/store";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
-  const [registrations] = useState(() => (user ? getRegistrationsForUser(user.id) : []));
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [notifications, setNotifications] = useState(() => getNotifications());
+
+  useEffect(() => {
+    if (user) setRegistrations(getRegistrationsForUser(user.id));
+  }, [user]);
 
   if (loading) return null;
 
@@ -119,10 +122,7 @@ export default function DashboardPage() {
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">NOTIFICATIONS</h2>
               <button
-                onClick={() => {
-                  markAllNotificationsRead();
-                  setNotifications(getNotifications());
-                }}
+                onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
                 className="font-body text-[9px] tracking-[0.2em] text-slate-500 transition-colors hover:text-cyan-400"
               >
                 MARK ALL READ
@@ -132,10 +132,9 @@ export default function DashboardPage() {
               {notifications.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() => {
-                    markNotificationRead(n.id);
-                    setNotifications(getNotifications());
-                  }}
+                  onClick={() =>
+                    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+                  }
                   className={`flex w-full items-start gap-3 border px-4 py-3 text-left transition-colors ${
                     n.read ? "border-[#1a2134] bg-[#0a0d16]/40" : "border-cyan-400/30 bg-[#0a0d16]/70"
                   }`}

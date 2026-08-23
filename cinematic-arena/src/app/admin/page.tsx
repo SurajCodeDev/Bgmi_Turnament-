@@ -44,7 +44,8 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Tournament | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [toast, setToast] = useState("");
-  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches">("tournaments");
+  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations">("tournaments");
+  const [regFilter, setRegFilter] = useState("");
 
   if (loading) return null;
 
@@ -72,9 +73,9 @@ export default function AdminPage() {
     setDraft({ ...t });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!draft) return;
-    updateTournament(draft);
+    await updateTournament(draft);
     setTournaments(getTournaments());
     setEditingId(null);
     setDraft(null);
@@ -86,22 +87,22 @@ export default function AdminPage() {
     setDraft(null);
   };
 
-  const createTournament = () => {
+  const createTournament = async () => {
     const t: Tournament = { ...emptyTournament, id: `t-${Date.now()}`, rules: [...emptyTournament.rules] };
-    addTournament(t);
+    await addTournament(t);
     setTournaments(getTournaments());
     setShowCreate(false);
     showToast("TOURNAMENT CREATED");
   };
 
-  const deleteTournament = (id: string) => {
-    removeTournament(id);
+  const deleteTournament = async (id: string) => {
+    await removeTournament(id);
     setTournaments(getTournaments());
     showToast("TOURNAMENT REMOVED");
   };
 
-  const handleReset = () => {
-    resetTournaments();
+  const handleReset = async () => {
+    await resetTournaments();
     setTournaments(getTournaments());
     showToast("DATA RESET TO SEED");
   };
@@ -113,6 +114,16 @@ export default function AdminPage() {
 
   const registrations = getRegistrations();
   const users = getUsers();
+  const filteredRegistrations = registrations.filter((r) => {
+    const q = regFilter.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      r.playerName.toLowerCase().includes(q) ||
+      r.playerUid.includes(q) ||
+      r.teamName.toLowerCase().includes(q) ||
+      r.tournamentName.toLowerCase().includes(q)
+    );
+  });
   const activePlayers = registrations.length;
   const liveCount = tournaments.filter((t) => t.status === "LIVE").length;
   const totalPrize = tournaments.reduce((sum, t) => {
@@ -143,8 +154,8 @@ export default function AdminPage() {
           </div>
         </motion.div>
 
-        <div className="mb-8 flex gap-1 border-b border-[#1a2134]">
-          {(["overview", "tournaments", "users", "matches"] as const).map((tb) => (
+        <div className="mb-8 flex gap-1 overflow-x-auto border-b border-[#1a2134]">
+          {(["overview", "tournaments", "registrations", "users", "matches"] as const).map((tb) => (
             <button
               key={tb}
               onClick={() => setTab(tb)}
@@ -295,7 +306,7 @@ export default function AdminPage() {
                             CANCEL
                           </button>
                         </div>
-                        <p className="font-body text-[9px] tracking-[0.2em] text-slate-600">CHANGES SAVE TO BROWSER STORAGE</p>
+                        <p className="font-body text-[9px] tracking-[0.2em] text-slate-600">CHANGES SAVE TO SERVER DATABASE</p>
                       </div>
                     </div>
                   )}
@@ -320,6 +331,72 @@ export default function AdminPage() {
                   </div>
                 </div>
               </motion.div>
+            )}
+          </div>
+        )}
+
+        {tab === "registrations" && (
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-body text-[11px] tracking-[0.2em] text-slate-400">
+                TOTAL REGISTRATIONS: <span className="font-bold text-cyan-400">{registrations.length}</span>
+              </p>
+              <input
+                value={regFilter}
+                onChange={(e) => setRegFilter(e.target.value)}
+                placeholder="SEARCH PLAYER / UID / TEAM..."
+                className="w-full border border-[#1a2134] bg-[#05060a] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60 sm:w-80"
+              />
+            </div>
+
+            {registrations.length === 0 ? (
+              <div className="holo-panel clip-corner flex flex-col items-center py-16 text-center">
+                <p className="font-display text-sm font-bold text-white">NO REGISTRATIONS YET</p>
+                <p className="mt-2 font-body text-xs text-slate-500">Players who register will appear here with full details.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto border border-[#1a2134] bg-[#0a0d16]/70">
+                <table className="w-full min-w-[720px] text-left">
+                  <thead>
+                    <tr className="border-b border-[#1a2134] bg-[#05060a]">
+                      {["#", "TOURNAMENT", "PLAYER", "BGMI UID", "EMAIL", "TEAM", "REGISTERED AT"].map((h) => (
+                        <th key={h} className="px-4 py-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRegistrations.map((r, i) => (
+                      <motion.tr
+                        key={`${r.userId}-${r.tournamentId}`}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="border-b border-[#12182a] transition-colors hover:bg-[#0a0d16]/40"
+                      >
+                        <td className="px-4 py-3.5 font-display text-xs font-bold text-slate-500">{i + 1}</td>
+                        <td className="px-4 py-3.5">
+                          <p className="font-body text-xs font-semibold text-slate-200">{r.tournamentName}</p>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <p className="font-body text-xs font-semibold text-white">{r.playerName}</p>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <span className="rounded-sm border border-cyan-400/30 bg-cyan-400/5 px-2 py-1 font-body text-[10px] font-semibold tracking-[0.15em] text-cyan-400">
+                            {r.playerUid}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 font-body text-xs text-slate-400">{r.playerEmail}</td>
+                        <td className="px-4 py-3.5 font-body text-xs text-slate-300">{r.teamName}</td>
+                        <td className="px-4 py-3.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
+                          {new Date(r.registeredAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
@@ -350,7 +427,7 @@ export default function AdminPage() {
                     <span className="rounded-sm border border-[#1a2134] bg-[#05060a] px-3 py-1.5 font-body text-[10px] tracking-[0.15em] text-slate-400">
                       {userRegs.length} REGISTRATIONS
                     </span>
-                    <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">JOINED {u.createdAt.slice(0, 10)}</span>
+                    <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">JOINED {u.createdAt ? u.createdAt.slice(0, 10) : "—"}</span>
                   </div>
                 </motion.div>
               );

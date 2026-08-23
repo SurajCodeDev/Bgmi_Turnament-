@@ -18,17 +18,16 @@ export default function LoginPage() {
     return null;
   }
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      const res = login(email, password);
-      if (!res.ok) {
-        setError(res.error || "Login failed.");
-        setLoading(false);
-      }
-    }, 400);
+    await new Promise((r) => setTimeout(r, 400));
+    const res = await login(email, password);
+    if (!res.ok) {
+      setError(res.error || "Login failed.");
+      setLoading(false);
+    }
   };
 
   return (

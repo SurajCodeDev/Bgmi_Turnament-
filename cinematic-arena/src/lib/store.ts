@@ -1,122 +1,105 @@
-import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, matches as seedMatches, defaultNotifications, type Tournament, type Notification } from "@/data/arena";
+import {
+  tournaments as seedTournaments,
+  teams as seedTeams,
+  players as seedPlayers,
+  matches as seedMatches,
+  defaultNotifications,
+  type Tournament,
+  type Notification,
+} from "@/data/arena";
+import {
+  apiGetTournaments,
+  apiSaveTournament,
+  apiAddTournament,
+  apiDeleteTournament,
+  apiResetTournaments,
+  apiGetRegistrations,
+  apiRegisterForTournament,
+  apiUnregisterFromTournament,
+  apiGetUsers,
+  type ApiUser,
+  type ApiRegistration,
+} from "@/lib/api";
 
 export type { Tournament };
+export type { ApiUser as User, ApiRegistration as Registration };
 
-export interface User {
+export interface LocalUser {
   id: string;
   name: string;
   email: string;
-  password: string;
   role: "admin" | "player";
   uid: string;
   team: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
-export interface Registration {
-  userId: string;
-  tournamentId: string;
-  teamName: string;
-  registeredAt: string;
+// ---------- In-memory cache (hydrated from server API) ----------
+
+let cachedTournaments: Tournament[] | null = null;
+let cachedRegistrations: ApiRegistration[] = [];
+let cachedUsers: ApiUser[] = [];
+let hydrated = false;
+
+export function isStoreHydrated() {
+  return hydrated;
 }
 
-const KEYS = {
-  tournaments: "arena_tournaments_v1",
-  users: "arena_users_v1",
-  session: "arena_session_v1",
-  registrations: "arena_registrations_v1",
-  notifications: "arena_notifications_v1",
-};
-
-function isBrowser() {
-  return typeof window !== "undefined";
-}
-
-function load<T>(key: string, fallback: T): T {
-  if (!isBrowser()) return fallback;
+export async function hydrateStore() {
   try {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
+    const [tours, regs, users] = await Promise.all([
+      apiGetTournaments(),
+      apiGetRegistrations(),
+      apiGetUsers(),
+    ]);
+    if (tours.length) cachedTournaments = tours;
+    cachedRegistrations = regs;
+    cachedUsers = users;
+    hydrated = true;
   } catch {
-    return fallback;
-  }
-}
-
-function save<T>(key: string, value: T) {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore quota errors
+    // keep seed fallback on failure
   }
 }
 
 // ---------- Tournaments ----------
 
 export function getTournaments(): Tournament[] {
-  const stored = load<Tournament[]>(KEYS.tournaments, seedTournaments);
-  if (stored.length === 0) return seedTournaments;
-  return stored;
-}
-
-export function saveTournaments(list: Tournament[]) {
-  save(KEYS.tournaments, list);
-}
-
-export function resetTournaments() {
-  save(KEYS.tournaments, seedTournaments);
+  return cachedTournaments ?? seedTournaments;
 }
 
 export function getTournament(id: string): Tournament | undefined {
   return getTournaments().find((t) => t.id === id);
 }
 
-export function updateTournament(updated: Tournament) {
-  const list = getTournaments();
-  const idx = list.findIndex((t) => t.id === updated.id);
-  if (idx >= 0) {
-    list[idx] = updated;
-    saveTournaments(list);
-  }
+export async function updateTournament(updated: Tournament) {
+  await apiSaveTournament(updated);
+  cachedTournaments = getTournaments().map((t) => (t.id === updated.id ? updated : t));
 }
 
-export function addTournament(t: Tournament) {
-  const list = getTournaments();
-  list.push(t);
-  saveTournaments(list);
+export async function addTournament(t: Tournament) {
+  await apiAddTournament(t);
+  cachedTournaments = [...getTournaments(), t];
 }
 
-export function removeTournament(id: string) {
-  const list = getTournaments().filter((t) => t.id !== id);
-  saveTournaments(list);
+export async function removeTournament(id: string) {
+  await apiDeleteTournament(id);
+  cachedTournaments = getTournaments().filter((t) => t.id !== id);
+}
+
+export async function resetTournaments() {
+  const res = await apiResetTournaments();
+  cachedTournaments = res.tournaments;
+  cachedRegistrations = [];
 }
 
 // ---------- Users / Auth ----------
 
-export function getUsers(): User[] {
-  const admin: User = {
-    id: "u-admin",
-    name: "Arena Admin",
-    email: "admin@arena.in",
-    password: "admin123",
-    role: "admin",
-    uid: "5400000001",
-    team: "NEXT LEVEL ARENA",
-    createdAt: "2024-08-01",
-  };
-  const demo: User = {
-    id: "u-demo",
-    name: "Viper",
-    email: "player@arena.in",
-    password: "player123",
-    role: "player",
-    uid: "5401234567",
-    team: "Team Nova",
-    createdAt: "2024-08-01",
-  };
-  const stored = load<User[]>(KEYS.users, []);
-  const merged = [admin, demo, ...stored];
+export function getUsers(): LocalUser[] {
+  const defaults: LocalUser[] = [
+    { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", createdAt: "2024-08-01" },
+    { id: "u-demo", name: "Viper", email: "player@arena.in", role: "player", uid: "5401234567", team: "Team Nova", createdAt: "2024-08-01" },
+  ];
+  const merged = [...defaults, ...cachedUsers];
   const seen = new Set<string>();
   return merged.filter((u) => {
     if (seen.has(u.id)) return false;
@@ -125,49 +108,21 @@ export function getUsers(): User[] {
   });
 }
 
-function saveUsers(users: User[]) {
-  const [admin, demo, ...rest] = users;
-  save(KEYS.users, rest);
+export async function refreshUsers() {
+  cachedUsers = await apiGetUsers();
 }
 
-export function findUserByEmail(email: string): User | undefined {
+export function findUserByEmail(email: string): LocalUser | undefined {
   return getUsers().find((u) => u.email.toLowerCase() === email.toLowerCase());
-}
-
-export function createUser(data: { name: string; email: string; password: string; uid: string; team: string }): User {
-  const user: User = {
-    id: `u-${Date.now()}`,
-    role: "player",
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
-  const users = getUsers().filter((u) => u.id !== "u-admin" && u.id !== "u-demo");
-  users.push(user);
-  saveUsers([...getUsers().filter((u) => u.id === "u-admin" || u.id === "u-demo"), ...users]);
-  return user;
-}
-
-export function getSessionUserId(): string | null {
-  return load<string | null>(KEYS.session, null);
-}
-
-export function setSession(userId: string | null) {
-  save(KEYS.session, userId);
-}
-
-export function getCurrentUser(): User | null {
-  const id = getSessionUserId();
-  if (!id) return null;
-  return getUsers().find((u) => u.id === id) ?? null;
 }
 
 // ---------- Registrations ----------
 
-export function getRegistrations(): Registration[] {
-  return load<Registration[]>(KEYS.registrations, []);
+export function getRegistrations(): ApiRegistration[] {
+  return cachedRegistrations;
 }
 
-export function getRegistrationsForUser(userId: string): Registration[] {
+export function getRegistrationsForUser(userId: string): ApiRegistration[] {
   return getRegistrations().filter((r) => r.userId === userId);
 }
 
@@ -175,36 +130,37 @@ export function isRegistered(userId: string, tournamentId: string): boolean {
   return getRegistrations().some((r) => r.userId === userId && r.tournamentId === tournamentId);
 }
 
-export function registerForTournament(userId: string, tournamentId: string, teamName: string) {
-  if (isRegistered(userId, tournamentId)) return;
-  const list = getRegistrations();
-  list.push({
-    userId,
-    tournamentId,
-    teamName,
-    registeredAt: new Date().toISOString(),
-  });
-  save(KEYS.registrations, list);
+export async function registerForTournament(
+  userId: string,
+  tournamentId: string,
+  details: { teamName: string; playerName: string; playerUid: string; playerEmail: string }
+) {
+  if (isRegistered(userId, tournamentId)) return { ok: false, error: "Already registered." };
+  const res = await apiRegisterForTournament(userId, tournamentId, details);
+  if (res.ok) {
+    cachedRegistrations = await apiGetRegistrations(userId);
+    const t = getTournament(tournamentId);
+    if (t) {
+      cachedTournaments = getTournaments().map((x) =>
+        x.id === tournamentId ? { ...x, teamsJoined: Math.min(x.teams, x.teamsJoined + 1) } : x
+      );
+    }
+  }
+  return res;
+}
 
+export async function unregisterFromTournament(userId: string, tournamentId: string) {
+  await apiUnregisterFromTournament(userId, tournamentId);
+  cachedRegistrations = await apiGetRegistrations(userId);
   const t = getTournament(tournamentId);
-  if (t && t.teamsJoined < t.teams) {
-    updateTournament({ ...t, teamsJoined: t.teamsJoined + 1 });
+  if (t) {
+    cachedTournaments = getTournaments().map((x) =>
+      x.id === tournamentId ? { ...x, teamsJoined: Math.max(0, x.teamsJoined - 1) } : x
+    );
   }
 }
 
-export function unregisterFromTournament(userId: string, tournamentId: string) {
-  const list = getRegistrations().filter(
-    (r) => !(r.userId === userId && r.tournamentId === tournamentId)
-  );
-  save(KEYS.registrations, list);
-
-  const t = getTournament(tournamentId);
-  if (t && t.teamsJoined > 0) {
-    updateTournament({ ...t, teamsJoined: t.teamsJoined - 1 });
-  }
-}
-
-// ---------- Teams / Players (derived) ----------
+// ---------- Teams / Players (static seed) ----------
 
 export function getTeams() {
   return seedTeams;
@@ -222,22 +178,23 @@ export function getPlayer(id: string) {
   return seedPlayers.find((p) => p.id === id);
 }
 
-// ---------- Notifications ----------
+export { seedMatches, defaultNotifications };
+
+// ---------- Notifications (static seed for now) ----------
 
 export function getNotifications(): Notification[] {
-  return load<Notification[]>(KEYS.notifications, defaultNotifications);
+  return defaultNotifications;
 }
 
 export function getUnreadCount(): number {
-  return getNotifications().filter((n) => !n.read).length;
+  return defaultNotifications.filter((n) => !n.read).length;
 }
 
 export function markNotificationRead(id: string) {
-  const list = getNotifications().map((n) => (n.id === id ? { ...n, read: true } : n));
-  save(KEYS.notifications, list);
+  // no-op for server-backed iteration; seed stays static
+  void id;
 }
 
 export function markAllNotificationsRead() {
-  const list = getNotifications().map((n) => ({ ...n, read: true }));
-  save(KEYS.notifications, list);
+  // no-op
 }

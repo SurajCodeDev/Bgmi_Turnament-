@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { getTournament, getTournaments, isRegistered, registerForTournament, unregisterFromTournament } from "@/lib/store";
@@ -18,7 +18,30 @@ export default function TournamentDetailPage() {
   const id = params.id;
   const { user } = useAuth();
   const [t, setT] = useState(() => getTournament(id));
-  const [registered, setRegistered] = useState<boolean>(() => !!user && isRegistered(user.id, id));
+  const [registered, setRegistered] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    playerName: user?.name ?? "",
+    playerUid: user?.uid ?? "",
+    playerEmail: user?.email ?? "",
+    teamName: user?.team ?? "",
+  });
+
+  useEffect(() => {
+    setT(getTournament(id));
+  }, [id]);
+
+  useEffect(() => {
+    setRegistered(!!user && isRegistered(user.id, id));
+    if (user) {
+      setForm({
+        playerName: user.name ?? "",
+        playerUid: user.uid ?? "",
+        playerEmail: user.email ?? "",
+        teamName: user.team ?? "",
+      });
+    }
+  }, [user, id]);
 
   if (!t) {
     return (
@@ -33,19 +56,35 @@ export default function TournamentDetailPage() {
     );
   }
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!user) {
       window.location.href = "/login";
       return;
     }
-    registerForTournament(user.id, t.id, user.team);
-    setRegistered(true);
-    setT(getTournament(t.id));
+    if (!/^\d{9,10}$/.test(form.playerUid)) {
+      alert("Enter a valid BGMI UID (9-10 digits).");
+      return;
+    }
+    if (!form.playerName.trim() || !form.playerEmail.trim() || !form.teamName.trim()) {
+      alert("Fill in all player details before registering.");
+      return;
+    }
+    setBusy(true);
+    const res = await registerForTournament(user.id, t.id, form);
+    setBusy(false);
+    if (res.ok) {
+      setRegistered(true);
+      setT(getTournament(t.id));
+    } else {
+      alert(res.error || "Registration failed.");
+    }
   };
 
-  const handleUnregister = () => {
+  const handleUnregister = async () => {
     if (!user) return;
-    unregisterFromTournament(user.id, t.id);
+    setBusy(true);
+    await unregisterFromTournament(user.id, t.id);
+    setBusy(false);
     setRegistered(false);
     setT(getTournament(t.id));
   };
@@ -156,8 +195,44 @@ export default function TournamentDetailPage() {
                 <div className="flex items-center justify-center gap-2 border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 font-body text-xs font-semibold tracking-[0.2em] text-cyan-400">
                   <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> REGISTERED
                 </div>
-                <button onClick={handleUnregister} className="btn-ghost w-full px-4 py-3 font-display text-[11px]">
-                  CANCEL REGISTRATION
+                <button onClick={handleUnregister} disabled={busy} className="btn-ghost w-full px-4 py-3 font-display text-[11px]">
+                  {busy ? "PROCESSING..." : "CANCEL REGISTRATION"}
+                </button>
+              </div>
+            ) : user ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
+                  <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">PLAYER DETAILS</p>
+                  {(
+                    [
+                      { key: "playerName", label: "PLAYER NAME", placeholder: "Your in-game name" },
+                      { key: "playerUid", label: "BGMI UID", placeholder: "5401234567" },
+                      { key: "playerEmail", label: "EMAIL", placeholder: "you@arena.in" },
+                      { key: "teamName", label: "TEAM NAME", placeholder: "Team Nova" },
+                    ] as const
+                  ).map((f) => (
+                    <div key={f.key}>
+                      <label className="mb-1 block font-body text-[8px] font-semibold tracking-[0.25em] text-slate-500">
+                        {f.label}
+                      </label>
+                      <input
+                        type={f.key === "playerEmail" ? "email" : "text"}
+                        value={form[f.key]}
+                        onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        placeholder={f.placeholder}
+                        className="w-full border border-[#1a2134] bg-[#0a0d16] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button onClick={handleRegister} disabled={busy || t.status === "COMPLETED" || t.teamsJoined >= t.teams} className="btn-primary w-full px-4 py-4 font-display text-sm">
+                  {busy
+                    ? "PROCESSING..."
+                    : t.teamsJoined >= t.teams
+                    ? "TOURNAMENT FULL"
+                    : t.status === "COMPLETED"
+                    ? "TOURNAMENT OVER"
+                    : "CONFIRM REGISTRATION"}
                 </button>
               </div>
             ) : (

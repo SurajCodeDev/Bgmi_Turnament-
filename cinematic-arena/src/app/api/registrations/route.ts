@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
+import { entryFeeNumber, isFreeTournament, isInviteOnly } from "@/lib/arena";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId, tournamentId, teamName, playerName, playerUid, playerEmail } = await req.json();
+  const { userId, tournamentId, teamName, playerName, playerUid, playerEmail, members } = await req.json();
   const db = readDB();
 
   if (db.registrations.some((r) => r.userId === userId && r.tournamentId === tournamentId)) {
@@ -24,8 +25,43 @@ export async function POST(req: Request) {
   if (t.teamsJoined >= t.teams) {
     return NextResponse.json({ ok: false, error: "Tournament is full." }, { status: 400 });
   }
+  if (isInviteOnly(t)) {
+    return NextResponse.json({ ok: false, error: "This tournament is invite-only." }, { status: 403 });
+  }
 
   const user = db.users.find((u) => u.id === userId);
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "User not found." }, { status: 401 });
+  }
+
+  const fee = entryFeeNumber(t);
+  if (!isFreeTournament(t)) {
+    if (user.wallet < fee) {
+      return NextResponse.json(
+        { ok: false, error: `Insufficient wallet balance. Entry fee is ₹${fee.toLocaleString("en-IN")}. Add funds first.` },
+        { status: 400 }
+      );
+    }
+    user.wallet -= fee;
+    db.transactions.push({
+      id: `tx-${Date.now()}`,
+      userId,
+      label: `Entry Fee — ${t.name}`,
+      amount: -fee,
+      status: "PAID",
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  const cleanMembers = Array.isArray(members)
+    ? members
+        .map((m: { name?: string; uid?: string }) => ({
+          name: (m?.name || "").toString().trim(),
+          uid: (m?.uid || "").toString().trim(),
+        }))
+        .filter((m: { name: string; uid: string }) => m.name && m.uid)
+    : [];
+
   const fallbackName = user?.name ?? "Player";
   const fallbackUid = user?.uid ?? "—";
   const fallbackEmail = user?.email ?? "—";
@@ -38,12 +74,14 @@ export async function POST(req: Request) {
     playerUid: playerUid || fallbackUid,
     playerEmail: playerEmail || fallbackEmail,
     teamName: teamName || "Team Solo",
+    members: cleanMembers,
+    claimed: false,
     registeredAt: new Date().toISOString(),
   });
   t.teamsJoined += 1;
   writeDB(db);
 
-  return NextResponse.json({ ok: true, registrations: db.registrations.filter((r) => r.userId === userId) });
+  return NextResponse.json({ ok: true, wallet: user.wallet, registrations: db.registrations.filter((r) => r.userId === userId) });
 }
 
 export async function DELETE(req: Request) {

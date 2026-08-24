@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import {
   getRegistrationsForUser,
@@ -11,15 +11,40 @@ import {
   getNotifications,
   type Registration,
 } from "@/lib/store";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
+import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, type ApiTransaction } from "@/lib/api";
+import { formatINR } from "@/lib/arena";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
+  const refresh = useStoreRefresh();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [notifications, setNotifications] = useState(() => getNotifications());
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [toast, setToast] = useState("");
+  const [claiming, setClaiming] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) setRegistrations(getRegistrationsForUser(user.id));
-  }, [user]);
+  }, [user, refresh]);
+
+  useEffect(() => {
+    if (user) {
+      apiGetWallet()
+        .then((res) => {
+          if (res.ok) {
+            setBalance(res.balance);
+            setTransactions(res.transactions);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user, refresh]);
 
   if (loading) return null;
 
@@ -36,6 +61,58 @@ export default function DashboardPage() {
       </main>
     );
   }
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
+  };
+
+  const handleTopup = async () => {
+    const n = parseInt(topupAmount, 10);
+    if (!n || n <= 0) {
+      showToast("ENTER A VALID AMOUNT");
+      return;
+    }
+    const res = await apiTopUp(n);
+    if (res.ok) {
+      setBalance(res.balance);
+      setTopupOpen(false);
+      setTopupAmount("");
+      showToast("FUNDS ADDED SUCCESSFULLY");
+    } else {
+      showToast(res.error || "TOP-UP FAILED");
+    }
+  };
+
+  const handleWithdraw = async () => {
+    const n = parseInt(withdrawAmount, 10);
+    if (!n || n <= 0) {
+      showToast("ENTER A VALID AMOUNT");
+      return;
+    }
+    const res = await apiWithdraw(n);
+    if (res.ok) {
+      setBalance(res.balance);
+      setWithdrawOpen(false);
+      setWithdrawAmount("");
+      showToast("WITHDRAWAL REQUESTED");
+    } else {
+      showToast(res.error || "WITHDRAWAL FAILED");
+    }
+  };
+
+  const handleClaim = async (tournamentId: string) => {
+    setClaiming(tournamentId);
+    const res = await apiClaimPrize(tournamentId);
+    setClaiming(null);
+    if (res.ok) {
+      setBalance(res.balance);
+      showToast(`PRIZE ${formatINR(res.amount)} CREDITED`);
+      if (user) setRegistrations(getRegistrationsForUser(user.id));
+    } else {
+      showToast(res.error || "CLAIM FAILED");
+    }
+  };
 
   const userTournaments = registrations
     .map((r) => getTournament(r.tournamentId))
@@ -92,29 +169,31 @@ export default function DashboardPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="holo-panel scanline clip-corner p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">WALLET</h2>
-              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">BALANCE</span>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">LIVE BALANCE</span>
             </div>
             <div className="mb-5 flex items-end justify-between border border-[#1a2134] bg-[#0a0d16]/60 p-5">
               <div>
-                <p className="font-display text-3xl font-black text-cyan-400 text-glow">₹{(player?.earnings ? parseInt(player.earnings.replace(/[^\d]/g, ""), 10) : 24500).toLocaleString("en-IN")}</p>
-                <p className="mt-1 font-body text-[9px] tracking-[0.25em] text-slate-500">TOTAL EARNINGS</p>
+                <p className="font-display text-3xl font-black text-cyan-400 text-glow">{formatINR(balance)}</p>
+                <p className="mt-1 font-body text-[9px] tracking-[0.25em] text-slate-500">WALLET BALANCE</p>
               </div>
               <div className="flex gap-2">
-                <button className="btn-primary px-4 py-2 font-display text-[10px]">+ ADD FUNDS</button>
-                <button className="btn-ghost px-4 py-2 font-display text-[10px]">WITHDRAW</button>
+                <button onClick={() => setTopupOpen(true)} className="btn-primary px-4 py-2 font-display text-[10px]">+ ADD FUNDS</button>
+                <button onClick={() => setWithdrawOpen(true)} className="btn-ghost px-4 py-2 font-display text-[10px]">WITHDRAW</button>
               </div>
             </div>
             <div className="space-y-2">
-              {[
-                { label: "Prize — BGMI Championship Series", amount: "+₹2,10,000", status: "CREDITED" },
-                { label: "Entry Fee — Rising Stars Cup", amount: "-₹99", status: "PAID" },
-                { label: "Prize — Community Clash", amount: "+₹75,000", status: "CREDITED" },
-              ].map((tx, i) => (
-                <div key={i} className="flex items-center justify-between border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
-                  <span className="font-body text-xs text-slate-400">{tx.label}</span>
-                  <span className={`font-display text-xs font-black ${tx.amount.startsWith("+") ? "text-cyan-400" : "text-red-400"}`}>{tx.amount}</span>
-                </div>
-              ))}
+              {transactions.length === 0 ? (
+                <p className="py-6 text-center font-body text-xs text-slate-600">NO TRANSACTIONS YET</p>
+              ) : (
+                transactions.slice(0, 6).map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
+                    <span className="font-body text-xs text-slate-400">{tx.label}</span>
+                    <span className={`font-display text-xs font-black ${tx.amount >= 0 ? "text-cyan-400" : "text-red-400"}`}>
+                      {tx.amount >= 0 ? "+" : ""}{formatINR(tx.amount)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </motion.div>
 
@@ -162,25 +241,54 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {userTournaments.map((t) => (
-                  <a
-                    key={t.id}
-                    href={`/tournaments/${t.id}`}
-                    data-cursor="VIEW"
-                    className="flex items-center justify-between gap-4 border border-[#1a2134] bg-[#0a0d16]/60 px-4 py-4 transition-colors hover:border-cyan-400/40"
-                  >
-                    <div className="flex items-center gap-3">
-                      <img src={t.image} alt={t.short} className="h-12 w-16 object-cover opacity-80" />
-                      <div>
-                        <p className="font-display text-sm font-bold text-white">{t.short}</p>
-                        <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">{t.date} · {t.time} · {t.map}</p>
+                {registrations.map((r) => {
+                  const t = getTournament(r.tournamentId);
+                  if (!t) return null;
+                  return (
+                    <div key={`${r.userId}-${r.tournamentId}`} className="border border-[#1a2134] bg-[#0a0d16]/60 px-4 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <a href={`/tournaments/${t.id}`} data-cursor="VIEW" className="flex items-center gap-3">
+                          <img src={t.image} alt={t.short} className="h-12 w-16 object-cover opacity-80" />
+                          <div>
+                            <p className="font-display text-sm font-bold text-white">{t.short}</p>
+                            <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">{t.date} · {t.time} · {t.map}</p>
+                          </div>
+                        </a>
+                        <span className={`rounded-sm border px-2 py-1 font-body text-[9px] tracking-[0.2em] ${
+                          t.status === "COMPLETED" ? "border-slate-600/50 text-slate-400" : "border-cyan-400/40 text-cyan-400"
+                        }`}>
+                          {t.status}
+                        </span>
                       </div>
+                      {r.members && r.members.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[#1a2134] pt-3">
+                          {r.members.map((m, i) => (
+                            <span key={i} title={`UID: ${m.uid}`} className="rounded-sm border border-[#12182a] bg-[#05060a] px-2 py-0.5 font-body text-[9px] tracking-[0.1em] text-slate-400">
+                              {m.name} <span className="text-cyan-500">{m.uid}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {t.status === "COMPLETED" && (
+                        <button
+                          onClick={() => handleClaim(t.id)}
+                          disabled={claiming === t.id || r.claimed}
+                          className={`mt-3 w-full px-4 py-2.5 font-display text-[10px] ${
+                            r.claimed
+                              ? "border border-emerald-500/40 bg-emerald-500/5 font-body text-emerald-400"
+                              : "btn-primary"
+                          }`}
+                        >
+                          {claiming === t.id
+                            ? "CREDITING..."
+                            : r.claimed
+                            ? "PRIZE CLAIMED"
+                            : `CLAIM PRIZE — ${t.prizePool} SHARE`}
+                        </button>
+                      )}
                     </div>
-                    <span className="rounded-sm border border-cyan-400/40 bg-cyan-400/10 px-2 py-1 font-body text-[9px] tracking-[0.2em] text-cyan-400">
-                      {t.status}
-                    </span>
-                  </a>
-                ))}
+                  );
+                })}
               </div>
             )}
           </motion.div>
@@ -204,6 +312,96 @@ export default function DashboardPage() {
           </motion.div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {topupOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[900] flex items-center justify-center bg-black/80 px-6"
+            onClick={() => setTopupOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="holo-panel scanline clip-corner w-full max-w-sm p-6"
+            >
+              <p className="mb-1 font-display text-sm font-bold tracking-[0.3em] text-white">ADD FUNDS</p>
+              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">MOCK UPI PAYMENT</p>
+              <input
+                type="number"
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                placeholder="Enter amount"
+                className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-3 font-body text-sm text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                {[100, 500, 1000, 2000, 5000].map((amt) => (
+                  <button
+                    key={amt}
+                    onClick={() => setTopupAmount(String(amt))}
+                    className="border border-[#1a2134] px-3 py-1 font-body text-[10px] text-slate-400 transition-colors hover:border-cyan-400/50 hover:text-cyan-400"
+                  >
+                    ₹{amt}
+                  </button>
+                ))}
+              </div>
+              <button onClick={handleTopup} className="btn-primary mt-5 w-full px-4 py-3 font-display text-xs">
+                PAY {topupAmount ? `₹${topupAmount}` : ""} VIA UPI
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {withdrawOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[900] flex items-center justify-center bg-black/80 px-6"
+            onClick={() => setWithdrawOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="holo-panel scanline clip-corner w-full max-w-sm p-6"
+            >
+              <p className="mb-1 font-display text-sm font-bold tracking-[0.3em] text-white">WITHDRAW</p>
+              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">
+                AVAILABLE: <span className="text-cyan-400">{formatINR(balance)}</span>
+              </p>
+              <input
+                type="number"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="Enter amount"
+                className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-3 font-body text-sm text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+              />
+              <button onClick={handleWithdraw} className="btn-primary mt-5 w-full px-4 py-3 font-display text-xs">
+                REQUEST WITHDRAWAL
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="fixed bottom-8 left-1/2 z-[999] -translate-x-1/2 border border-cyan-400/50 bg-[#05060a] px-6 py-3 font-body text-xs font-semibold tracking-[0.2em] text-cyan-400 shadow-glow"
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

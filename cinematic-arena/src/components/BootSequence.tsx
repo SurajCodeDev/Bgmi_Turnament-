@@ -12,12 +12,20 @@ const bootLines = [
   "SYNCING LIVE FEED",
 ];
 
+const BOOT_FLAG = "nla_booted_v2";
+
 export function BootSequence() {
+  const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
   const [removed, setRemoved] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem(BOOT_FLAG)) {
+      setRemoved(true);
+      return;
+    }
+    setVisible(true);
     const start = Date.now();
     const duration = 2600;
     const interval = setInterval(() => {
@@ -26,6 +34,7 @@ export function BootSequence() {
       setProgress(p);
       if (p >= 100) {
         clearInterval(interval);
+        sessionStorage.setItem(BOOT_FLAG, "1");
         setTimeout(() => setDone(true), 600);
         setTimeout(() => setRemoved(true), 1600);
       }
@@ -37,7 +46,7 @@ export function BootSequence() {
 
   return (
     <AnimatePresence>
-      {!removed && (
+      {visible && !removed && (
         <motion.div
           className="fixed inset-0 z-[9998] flex flex-col items-center justify-center bg-[#05060a]"
           initial={{ opacity: 1 }}

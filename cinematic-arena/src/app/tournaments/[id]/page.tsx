@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { getTournament, getTournaments, isRegistered, registerForTournament, unregisterFromTournament } from "@/lib/store";
 import { useAuth } from "@/context/AuthContext";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
+import { apiGetWallet, apiTopUp } from "@/lib/api";
+import { entryFeeNumber, isFreeTournament, isInviteOnly, prizeNumber, squadSizeFor, formatINR } from "@/lib/arena";
 
 const statusColor: Record<string, string> = {
   LIVE: "text-red-400 border-red-500/50",
@@ -17,9 +20,13 @@ export default function TournamentDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { user } = useAuth();
+  const refresh = useStoreRefresh();
   const [t, setT] = useState(() => getTournament(id));
   const [registered, setRegistered] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [wallet, setWallet] = useState<number | null>(null);
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [topupAmount, setTopupAmount] = useState("");
   const [form, setForm] = useState({
     playerName: user?.name ?? "",
     playerUid: user?.uid ?? "",
@@ -27,9 +34,12 @@ export default function TournamentDetailPage() {
     teamName: user?.team ?? "",
   });
 
+  const size = useMemo(() => (t ? squadSizeFor(t.mode) : 1), [t]);
+  const [members, setMembers] = useState<{ name: string; uid: string }[]>([]);
+
   useEffect(() => {
     setT(getTournament(id));
-  }, [id]);
+  }, [id, refresh]);
 
   useEffect(() => {
     setRegistered(!!user && isRegistered(user.id, id));
@@ -42,6 +52,28 @@ export default function TournamentDetailPage() {
       });
     }
   }, [user, id]);
+
+  useEffect(() => {
+    if (user) {
+      apiGetWallet()
+        .then((res) => {
+          if (res.ok) setWallet(res.balance);
+        })
+        .catch(() => {});
+    } else {
+      setWallet(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    setMembers((prev) => {
+      const needed = size - 1;
+      if (prev.length === needed) return prev;
+      const next = [...prev];
+      while (next.length < needed) next.push({ name: "", uid: "" });
+      return next.slice(0, needed);
+    });
+  }, [size]);
 
   if (!t) {
     return (
@@ -69,14 +101,43 @@ export default function TournamentDetailPage() {
       alert("Fill in all player details before registering.");
       return;
     }
+    const filledMembers = members.filter((m) => m.name.trim() && m.uid.trim());
+    for (const m of filledMembers) {
+      if (!/^\d{9,10}$/.test(m.uid)) {
+        alert(`Invalid BGMI UID for teammate ${m.name}.`);
+        return;
+      }
+    }
+    if (members.length > 0 && filledMembers.length !== members.length) {
+      alert("Fill in complete details for every teammate.");
+      return;
+    }
     setBusy(true);
-    const res = await registerForTournament(user.id, t.id, form);
+    const res = await registerForTournament(user.id, t.id, { ...form, members: filledMembers });
     setBusy(false);
     if (res.ok) {
       setRegistered(true);
       setT(getTournament(t.id));
+      setWallet(typeof res.wallet === "number" ? res.wallet : wallet);
     } else {
       alert(res.error || "Registration failed.");
+    }
+  };
+
+  const handleTopup = async () => {
+    const n = parseInt(topupAmount, 10);
+    if (!n || n <= 0) {
+      alert("Enter a valid amount.");
+      return;
+    }
+    const res = await apiTopUp(n);
+    if (res.ok) {
+      setWallet(res.balance);
+      setTopupOpen(false);
+      setTopupAmount("");
+      alert(`Funds added! New balance: ${formatINR(res.balance)}`);
+    } else {
+      alert(res.error || "Top-up failed.");
     }
   };
 
@@ -133,7 +194,7 @@ export default function TournamentDetailPage() {
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {[
-                { label: "ENTRY FEE", value: t.entryFee },
+                { label: "ENTRY FEE", value: isFreeTournament(t) ? "FREE" : t.entryFee },
                 { label: "DATE", value: t.date },
                 { label: "TIME", value: t.time },
                 { label: "FORMAT", value: t.format },
@@ -142,9 +203,36 @@ export default function TournamentDetailPage() {
               ].map((info) => (
                 <div key={info.label} className="border border-[#1a2134] bg-[#0a0d16]/60 px-4 py-3">
                   <p className="font-body text-[9px] tracking-[0.25em] text-slate-500">{info.label}</p>
-                  <p className="mt-1 font-body text-sm font-semibold text-slate-200">{info.value}</p>
+                  <p className={`mt-1 font-body text-sm font-semibold ${info.label === "ENTRY FEE" && info.value === "FREE" ? "text-emerald-400" : "text-slate-200"}`}>{info.value}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-8">
+              <h3 className="mb-4 font-display text-sm font-bold tracking-[0.25em] text-cyan-400">PRIZE DISTRIBUTION</h3>
+              <div className="overflow-hidden border border-[#1a2134]">
+                <div className="flex items-center justify-between border-b border-[#1a2134] bg-[#0a0d16]/80 px-5 py-3">
+                  <div>
+                    <p className="font-display text-base font-black text-cyan-400">1ST PLACE</p>
+                    <p className="font-body text-[9px] tracking-[0.2em] text-slate-500">CHAMPIONS</p>
+                  </div>
+                  <p className="font-display text-base font-black text-white">{formatINR(Math.floor(prizeNumber(t) * 0.5))}</p>
+                </div>
+                <div className="flex items-center justify-between border-b border-[#1a2134] bg-[#0a0d16]/50 px-5 py-3">
+                  <div>
+                    <p className="font-display text-sm font-bold text-slate-200">2ND PLACE</p>
+                    <p className="font-body text-[9px] tracking-[0.2em] text-slate-500">RUNNER-UP</p>
+                  </div>
+                  <p className="font-display text-sm font-black text-slate-200">{formatINR(Math.floor(prizeNumber(t) * 0.3))}</p>
+                </div>
+                <div className="flex items-center justify-between bg-[#0a0d16]/40 px-5 py-3">
+                  <div>
+                    <p className="font-display text-sm font-bold text-slate-300">3RD PLACE</p>
+                    <p className="font-body text-[9px] tracking-[0.2em] text-slate-500">SEMI-FINALIST</p>
+                  </div>
+                  <p className="font-display text-sm font-black text-slate-300">{formatINR(Math.floor(prizeNumber(t) * 0.2))}</p>
+                </div>
+              </div>
             </div>
 
             <div className="mt-8">
@@ -182,12 +270,22 @@ export default function TournamentDetailPage() {
               </div>
               <div className="flex justify-between">
                 <span>ENTRY FEE</span>
-                <span className="text-slate-200">{t.entryFee}</span>
+                {isFreeTournament(t) ? (
+                  <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-emerald-400">FREE</span>
+                ) : (
+                  <span className="text-slate-200">{t.entryFee}</span>
+                )}
               </div>
               <div className="flex justify-between">
                 <span>PRIZE POOL</span>
                 <span className="text-cyan-400">{t.prizePool}</span>
               </div>
+              {user && wallet !== null && (
+                <div className="flex justify-between border-t border-[#1a2134] pt-3">
+                  <span>WALLET</span>
+                  <span className="text-cyan-300">{formatINR(wallet)}</span>
+                </div>
+              )}
             </div>
 
             {registered ? (
@@ -200,9 +298,12 @@ export default function TournamentDetailPage() {
                 </button>
               </div>
             ) : user ? (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
-                  <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">PLAYER DETAILS</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">STEP 1 · LEADER DETAILS</p>
+                    <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">CAPTAIN</span>
+                  </div>
                   {(
                     [
                       { key: "playerName", label: "PLAYER NAME", placeholder: "Your in-game name" },
@@ -225,14 +326,81 @@ export default function TournamentDetailPage() {
                     </div>
                   ))}
                 </div>
-                <button onClick={handleRegister} disabled={busy || t.status === "COMPLETED" || t.teamsJoined >= t.teams} className="btn-primary w-full px-4 py-4 font-display text-sm">
+
+                {size > 1 && (
+                  <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
+                    <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">
+                      STEP 2 · TEAM MEMBERS <span className="text-slate-600">({size - 1} TEAMMATES)</span>
+                    </p>
+                    {members.map((m, idx) => (
+                      <div key={idx} className="flex flex-col gap-2 border border-[#12182a] bg-[#0a0d16]/50 p-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-body text-[9px] font-bold tracking-[0.2em] text-cyan-400">MEMBER {idx + 1}</span>
+                          <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">TEAMMATE</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            value={m.name}
+                            onChange={(e) =>
+                              setMembers((prev) => prev.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)))
+                            }
+                            placeholder="Player name"
+                            className="w-full border border-[#1a2134] bg-[#0a0d16] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                          />
+                          <input
+                            value={m.uid}
+                            onChange={(e) =>
+                              setMembers((prev) => prev.map((x, i) => (i === idx ? { ...x, uid: e.target.value } : x)))
+                            }
+                            placeholder="BGMI UID"
+                            className="w-full border border-[#1a2134] bg-[#0a0d16] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!isFreeTournament(t) && (
+                  <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
+                    <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">STEP 3 · ENTRY FEE</p>
+                    <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                      <span>ENTRY FEE</span>
+                      <span className="font-bold text-slate-200">{formatINR(entryFeeNumber(t))}</span>
+                    </div>
+                    <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                      <span>WALLET BALANCE</span>
+                      <span className={`font-bold ${wallet !== null && wallet >= entryFeeNumber(t) ? "text-emerald-400" : "text-red-400"}`}>
+                        {wallet !== null ? formatINR(wallet) : "—"}
+                      </span>
+                    </div>
+                    {wallet !== null && wallet < entryFeeNumber(t) && (
+                      <button onClick={() => setTopupOpen(true)} className="btn-primary w-full px-4 py-2.5 font-display text-[11px]">
+                        + ADD FUNDS TO WALLET
+                      </button>
+                    )}
+                    {isInviteOnly(t) && (
+                      <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">INVITE-ONLY EVENT · SPONSORED SLOTS</p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleRegister}
+                  disabled={busy || t.status === "COMPLETED" || t.teamsJoined >= t.teams}
+                  className="btn-primary w-full px-4 py-4 font-display text-sm"
+                >
                   {busy
                     ? "PROCESSING..."
                     : t.teamsJoined >= t.teams
                     ? "TOURNAMENT FULL"
                     : t.status === "COMPLETED"
                     ? "TOURNAMENT OVER"
-                    : "CONFIRM REGISTRATION"}
+                    : isFreeTournament(t)
+                    ? "CONFIRM FREE ENTRY"
+                    : wallet !== null && wallet < entryFeeNumber(t)
+                    ? "ADD FUNDS TO REGISTER"
+                    : "PAY & REGISTER"}
                 </button>
               </div>
             ) : (
@@ -249,6 +417,35 @@ export default function TournamentDetailPage() {
               <p className="mt-4 text-center font-body text-[10px] tracking-[0.15em] text-slate-500">
                 SIGN IN REQUIRED TO REGISTER
               </p>
+            )}
+
+            {topupOpen && (
+              <div className="mt-4 border border-cyan-400/40 bg-[#05060a] p-4">
+                <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">ADD FUNDS (MOCK UPI)</p>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={topupAmount}
+                    onChange={(e) => setTopupAmount(e.target.value)}
+                    placeholder="Amount"
+                    className="w-full border border-[#1a2134] bg-[#0a0d16] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                  />
+                  <button onClick={handleTopup} className="btn-primary shrink-0 px-4 py-2 font-display text-[10px]">
+                    PAY
+                  </button>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  {[100, 500, 1000, 2000].map((amt) => (
+                    <button
+                      key={amt}
+                      onClick={() => setTopupAmount(String(amt))}
+                      className="border border-[#1a2134] px-3 py-1 font-body text-[10px] text-slate-400 transition-colors hover:border-cyan-400/50 hover:text-cyan-400"
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </motion.div>
         </div>

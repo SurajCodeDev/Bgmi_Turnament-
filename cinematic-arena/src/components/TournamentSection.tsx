@@ -1,7 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { tournaments, type Tournament } from "@/data/arena";
+import { getTournaments, type Tournament } from "@/lib/store";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
+import { isFreeTournament, isInviteOnly } from "@/lib/arena";
 
 const statusColor: Record<Tournament["status"], string> = {
   LIVE: "text-red-400 border-red-500/50",
@@ -10,7 +12,8 @@ const statusColor: Record<Tournament["status"], string> = {
   COMPLETED: "text-slate-500 border-slate-600/50",
 };
 
-function TournamentCard({ t }: { t: Tournament }) {
+function TournamentCard({ t, featured }: { t: Tournament; featured?: boolean }) {
+  const pct = t.teams > 0 ? Math.min(100, Math.round((t.teamsJoined / t.teams) * 100)) : 0;
   return (
     <motion.article
       initial={{ opacity: 0, y: 40 }}
@@ -19,23 +22,38 @@ function TournamentCard({ t }: { t: Tournament }) {
       transition={{ duration: 0.6 }}
       whileHover={{ y: -8 }}
       data-cursor="ENTER"
-      className="holo-panel scanline clip-corner group relative flex flex-col overflow-hidden p-6"
+      className={`holo-panel scanline clip-corner group relative flex flex-col overflow-hidden p-6 ${featured ? "sm:col-span-2" : ""}`}
     >
       <div className="absolute inset-0">
         <img src={t.image} alt={t.short} className="h-full w-full object-cover opacity-20 transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0d16]/40 via-transparent to-[#0a0d16]/90" />
       </div>
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/[0.04] to-transparent" />
-      <div className="relative z-10">
+      <div className="relative z-10 flex flex-1 flex-col">
         <div className="mb-4 flex items-center justify-between">
           <span className="font-body text-[10px] tracking-[0.25em] text-slate-500">{t.game} / TOURNAMENT</span>
-          <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.15em] ${statusColor[t.status]}`}>
-            {t.status}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {isFreeTournament(t) ? (
+              <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-emerald-400">
+                FREE
+              </span>
+            ) : isInviteOnly(t) ? (
+              <span className="rounded-sm border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-purple-400">
+                INVITE
+              </span>
+            ) : (
+              <span className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-amber-400">
+                PAID · {t.entryFee}
+              </span>
+            )}
+            <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.15em] ${statusColor[t.status]}`}>
+              {t.status}
+            </span>
+          </div>
         </div>
 
-        <h3 className="font-display text-xl font-black tracking-wide text-white">{t.short}</h3>
-        <p className="mt-0.5 font-body text-xs tracking-[0.15em] text-slate-500">{t.mode} · {t.format}</p>
+        <h3 className={`font-display font-black tracking-wide text-white ${featured ? "text-2xl" : "text-xl"}`}>{t.short}</h3>
+        <p className="mt-0.5 font-body text-xs tracking-[0.15em] text-slate-500">{t.mode} · {t.format} · {t.map}</p>
 
         <div className="mt-6 flex items-end justify-between border-t border-[#1a2134] pt-5">
           <div>
@@ -48,9 +66,16 @@ function TournamentCard({ t }: { t: Tournament }) {
           </div>
         </div>
 
+        <div className="mt-3 h-1 w-full overflow-hidden bg-[#1a2134]">
+          <div
+            className={`h-full transition-all duration-700 ${pct >= 100 ? "bg-red-500" : "bg-gradient-to-r from-cyan-400 to-blue-500"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+
         <div className="mt-5 flex items-center justify-between font-body text-xs tracking-[0.15em] text-slate-400">
           <span>{t.date} · {t.time}</span>
-          <span>ENTRY {t.entryFee}</span>
+          <span className={isFreeTournament(t) ? "text-emerald-400" : ""}>ENTRY {isFreeTournament(t) ? "FREE" : t.entryFee}</span>
         </div>
 
         <a
@@ -58,7 +83,7 @@ function TournamentCard({ t }: { t: Tournament }) {
           data-cursor="ENTER"
           className="btn-ghost mt-6 flex w-full items-center justify-center gap-2 px-4 py-3 font-display text-[11px]"
         >
-          JOIN TOURNAMENT
+          {pct >= 100 ? "VIEW EVENT" : "JOIN TOURNAMENT"}
           <span className="transition-transform group-hover:translate-x-1">→</span>
         </a>
       </div>
@@ -67,6 +92,10 @@ function TournamentCard({ t }: { t: Tournament }) {
 }
 
 export function TournamentSection() {
+  useStoreRefresh();
+  const tournaments = getTournaments();
+  const active = tournaments.filter((t) => t.status !== "COMPLETED");
+
   return (
     <section id="tournaments" className="relative py-24">
       <div className="mx-auto max-w-[1400px] px-6">
@@ -77,12 +106,13 @@ export function TournamentSection() {
           </h2>
           <p className="mt-4 max-w-xl font-body text-sm text-slate-400">
             Premium BGMI competitive events with verified players, live scoring and massive prize pools.
+            Free and paid entry tournaments available.
           </p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {tournaments.map((t) => (
-            <TournamentCard key={t.id} t={t} />
+          {active.map((t, i) => (
+            <TournamentCard key={t.id} t={t} featured={i === 0} />
           ))}
         </div>
       </div>

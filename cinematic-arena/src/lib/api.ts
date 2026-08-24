@@ -8,6 +8,34 @@ export interface ApiUser {
   role: "admin" | "player";
   uid: string;
   team: string;
+  wallet: number;
+}
+
+export interface ApiRegistrationMember {
+  name: string;
+  uid: string;
+}
+
+export interface ApiRegistration {
+  userId: string;
+  tournamentId: string;
+  tournamentName: string;
+  playerName: string;
+  playerUid: string;
+  playerEmail: string;
+  teamName: string;
+  members: ApiRegistrationMember[];
+  claimed: boolean;
+  registeredAt: string;
+}
+
+export interface ApiTransaction {
+  id: string;
+  userId: string;
+  label: string;
+  amount: number;
+  status: string;
+  createdAt: string;
 }
 
 async function json<T>(url: string, options?: RequestInit): Promise<T> {
@@ -67,17 +95,6 @@ export async function apiResetTournaments() {
 
 // ---- Registrations ----
 
-export interface ApiRegistration {
-  userId: string;
-  tournamentId: string;
-  tournamentName: string;
-  playerName: string;
-  playerUid: string;
-  playerEmail: string;
-  teamName: string;
-  registeredAt: string;
-}
-
 export async function apiGetRegistrations(userId?: string): Promise<ApiRegistration[]> {
   const qs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
   const data = await json<{ ok: boolean; registrations: ApiRegistration[] }>(`/api/registrations${qs}`);
@@ -87,9 +104,9 @@ export async function apiGetRegistrations(userId?: string): Promise<ApiRegistrat
 export async function apiRegisterForTournament(
   userId: string,
   tournamentId: string,
-  details: { teamName: string; playerName: string; playerUid: string; playerEmail: string }
+  details: { teamName: string; playerName: string; playerUid: string; playerEmail: string; members: ApiRegistrationMember[] }
 ) {
-  return json<{ ok: boolean; error?: string }>("/api/registrations", {
+  return json<{ ok: boolean; error?: string; wallet?: number }>("/api/registrations", {
     method: "POST",
     body: JSON.stringify({ userId, tournamentId, ...details }),
   });
@@ -99,6 +116,35 @@ export async function apiUnregisterFromTournament(userId: string, tournamentId: 
   return json<{ ok: boolean }>("/api/registrations", {
     method: "DELETE",
     body: JSON.stringify({ userId, tournamentId }),
+  });
+}
+
+// ---- Wallet ----
+
+export async function apiGetWallet() {
+  return json<{ ok: boolean; balance: number; transactions: ApiTransaction[] }>("/api/wallet");
+}
+
+export async function apiTopUp(amount: number) {
+  return json<{ ok: boolean; balance: number; error?: string }>("/api/wallet/topup", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function apiWithdraw(amount: number) {
+  return json<{ ok: boolean; balance: number; error?: string }>("/api/wallet/withdraw", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+// ---- Prize ----
+
+export async function apiClaimPrize(tournamentId: string) {
+  return json<{ ok: boolean; balance: number; amount: number; error?: string }>("/api/prize/claim", {
+    method: "POST",
+    body: JSON.stringify({ tournamentId }),
   });
 }
 

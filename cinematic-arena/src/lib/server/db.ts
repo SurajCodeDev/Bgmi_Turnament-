@@ -10,6 +10,7 @@ export interface ServerUser {
   role: "admin" | "player";
   uid: string;
   team: string;
+  wallet: number;
   createdAt: string;
 }
 
@@ -21,6 +22,8 @@ export interface ServerRegistration {
   playerUid: string;
   playerEmail: string;
   teamName: string;
+  members: { name: string; uid: string }[];
+  claimed: boolean;
   registeredAt: string;
 }
 
@@ -55,14 +58,31 @@ const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 const seedUsers: ServerUser[] = [
-  { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", createdAt: "2024-08-01" },
-  { id: "u-demo", name: "Viper", email: "player@arena.in", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", createdAt: "2024-08-01" },
+  { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, createdAt: "2024-08-01" },
+  { id: "u-demo", name: "Viper", email: "player@arena.in", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, createdAt: "2024-08-01" },
 ];
 
 const seedDB: DBShape = {
   tournaments: seedTournaments,
   users: seedUsers,
-  registrations: [],
+  registrations: [
+    {
+      userId: "u-demo",
+      tournamentId: "t-006",
+      tournamentName: "BGMI Community Clash",
+      playerName: "Viper",
+      playerUid: "5401234567",
+      playerEmail: "player@arena.in",
+      teamName: "Team Nova",
+      members: [
+        { name: "Blitz", uid: "5402222333" },
+        { name: "Cipher", uid: "5403333444" },
+        { name: "Frost", uid: "5404444555" },
+      ],
+      claimed: false,
+      registeredAt: "2024-08-14T10:00:00.000Z",
+    },
+  ],
   matches: seedMatches,
   notifications: defaultNotifications,
   disputes: [],
@@ -85,7 +105,19 @@ export function readDB(): DBShape {
     }
     const raw = fs.readFileSync(DB_PATH, "utf-8");
     const parsed = JSON.parse(raw) as DBShape;
-    return { ...defaultDB(), ...parsed, telegram: { ...defaultDB().telegram, ...parsed.telegram } };
+    const base = defaultDB();
+    const merged: DBShape = {
+      ...base,
+      ...parsed,
+      telegram: { ...base.telegram, ...(parsed.telegram || {}) },
+    };
+    merged.users = (merged.users || []).map((u) => ({ ...u, wallet: typeof u.wallet === "number" ? u.wallet : 0 }));
+    merged.registrations = (merged.registrations || []).map((r) => ({
+      ...r,
+      members: Array.isArray(r.members) ? r.members : [],
+      claimed: !!r.claimed,
+    }));
+    return merged;
   } catch {
     return defaultDB();
   }

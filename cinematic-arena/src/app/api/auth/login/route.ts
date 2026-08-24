@@ -25,6 +25,6 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, uid: user.uid, team: user.team },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, uid: user.uid, team: user.team, wallet: user.wallet },
   });
 }

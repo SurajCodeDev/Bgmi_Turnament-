@@ -31,6 +31,7 @@ export interface LocalUser {
   role: "admin" | "player";
   uid: string;
   team: string;
+  wallet: number;
   createdAt?: string;
 }
 
@@ -41,24 +42,50 @@ let cachedRegistrations: ApiRegistration[] = [];
 let cachedUsers: ApiUser[] = [];
 let hydrated = false;
 
+const listeners = new Set<() => void>();
+
+export function subscribeStore(fn: () => void) {
+  listeners.add(fn);
+  return () => {
+    listeners.delete(fn);
+  };
+}
+
+function emit() {
+  listeners.forEach((fn) => fn());
+}
+
 export function isStoreHydrated() {
   return hydrated;
 }
 
-export async function hydrateStore() {
-  try {
-    const [tours, regs, users] = await Promise.all([
-      apiGetTournaments(),
-      apiGetRegistrations(),
-      apiGetUsers(),
-    ]);
-    if (tours.length) cachedTournaments = tours;
-    cachedRegistrations = regs;
-    cachedUsers = users;
-    hydrated = true;
-  } catch {
-    // keep seed fallback on failure
+let hydratePromise: Promise<void> | null = null;
+
+export function hydrateStore() {
+  if (!hydratePromise) {
+    hydratePromise = (async () => {
+      try {
+        const [tours, regs, users] = await Promise.all([
+          apiGetTournaments(),
+          apiGetRegistrations(),
+          apiGetUsers(),
+        ]);
+        if (tours.length) cachedTournaments = tours;
+        cachedRegistrations = regs;
+        cachedUsers = users;
+        hydrated = true;
+      } catch {
+        // keep seed fallback on failure
+      } finally {
+        emit();
+      }
+    })();
   }
+  return hydratePromise;
+}
+
+export function refreshStore() {
+  return hydrateStore();
 }
 
 // ---------- Tournaments ----------
@@ -74,30 +101,34 @@ export function getTournament(id: string): Tournament | undefined {
 export async function updateTournament(updated: Tournament) {
   await apiSaveTournament(updated);
   cachedTournaments = getTournaments().map((t) => (t.id === updated.id ? updated : t));
+  emit();
 }
 
 export async function addTournament(t: Tournament) {
   await apiAddTournament(t);
   cachedTournaments = [...getTournaments(), t];
+  emit();
 }
 
 export async function removeTournament(id: string) {
   await apiDeleteTournament(id);
   cachedTournaments = getTournaments().filter((t) => t.id !== id);
+  emit();
 }
 
 export async function resetTournaments() {
   const res = await apiResetTournaments();
   cachedTournaments = res.tournaments;
   cachedRegistrations = [];
+  emit();
 }
 
 // ---------- Users / Auth ----------
 
 export function getUsers(): LocalUser[] {
   const defaults: LocalUser[] = [
-    { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", createdAt: "2024-08-01" },
-    { id: "u-demo", name: "Viper", email: "player@arena.in", role: "player", uid: "5401234567", team: "Team Nova", createdAt: "2024-08-01" },
+    { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, createdAt: "2024-08-01" },
+    { id: "u-demo", name: "Viper", email: "player@arena.in", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, createdAt: "2024-08-01" },
   ];
   const merged = [...defaults, ...cachedUsers];
   const seen = new Set<string>();
@@ -110,6 +141,7 @@ export function getUsers(): LocalUser[] {
 
 export async function refreshUsers() {
   cachedUsers = await apiGetUsers();
+  emit();
 }
 
 export function findUserByEmail(email: string): LocalUser | undefined {
@@ -133,7 +165,13 @@ export function isRegistered(userId: string, tournamentId: string): boolean {
 export async function registerForTournament(
   userId: string,
   tournamentId: string,
-  details: { teamName: string; playerName: string; playerUid: string; playerEmail: string }
+  details: {
+    teamName: string;
+    playerName: string;
+    playerUid: string;
+    playerEmail: string;
+    members: { name: string; uid: string }[];
+  }
 ) {
   if (isRegistered(userId, tournamentId)) return { ok: false, error: "Already registered." };
   const res = await apiRegisterForTournament(userId, tournamentId, details);
@@ -145,6 +183,7 @@ export async function registerForTournament(
         x.id === tournamentId ? { ...x, teamsJoined: Math.min(x.teams, x.teamsJoined + 1) } : x
       );
     }
+    emit();
   }
   return res;
 }
@@ -158,6 +197,7 @@ export async function unregisterFromTournament(userId: string, tournamentId: str
       x.id === tournamentId ? { ...x, teamsJoined: Math.max(0, x.teamsJoined - 1) } : x
     );
   }
+  emit();
 }
 
 // ---------- Teams / Players (static seed) ----------

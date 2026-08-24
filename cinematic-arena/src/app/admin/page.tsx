@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
 import {
   getTournaments,
   updateTournament,
@@ -39,6 +40,7 @@ const labelCls = "mb-1.5 block font-body text-[9px] font-semibold tracking-[0.25
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
+  const refresh = useStoreRefresh();
   const [tournaments, setTournaments] = useState<Tournament[]>(() => getTournaments());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Tournament | null>(null);
@@ -46,6 +48,10 @@ export default function AdminPage() {
   const [toast, setToast] = useState("");
   const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations">("tournaments");
   const [regFilter, setRegFilter] = useState("");
+
+  useEffect(() => {
+    setTournaments(getTournaments());
+  }, [refresh]);
 
   if (loading) return null;
 
@@ -359,7 +365,7 @@ export default function AdminPage() {
                 <table className="w-full min-w-[720px] text-left">
                   <thead>
                     <tr className="border-b border-[#1a2134] bg-[#05060a]">
-                      {["#", "TOURNAMENT", "PLAYER", "BGMI UID", "EMAIL", "TEAM", "REGISTERED AT"].map((h) => (
+                      {["#", "TOURNAMENT", "PLAYER (CAPTAIN)", "BGMI UID", "EMAIL", "TEAM", "ROSTER", "REGISTERED AT"].map((h) => (
                         <th key={h} className="px-4 py-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">
                           {h}
                         </th>
@@ -389,6 +395,23 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3.5 font-body text-xs text-slate-400">{r.playerEmail}</td>
                         <td className="px-4 py-3.5 font-body text-xs text-slate-300">{r.teamName}</td>
+                        <td className="px-4 py-3.5">
+                          {r.members && r.members.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {r.members.map((m, mi) => (
+                                <span
+                                  key={mi}
+                                  title={`UID: ${m.uid}`}
+                                  className="rounded-sm border border-[#1a2134] bg-[#05060a] px-2 py-0.5 font-body text-[9px] tracking-[0.1em] text-slate-400"
+                                >
+                                  {m.name} <span className="text-cyan-500">{m.uid}</span>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="font-body text-[10px] text-slate-600">—</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
                           {new Date(r.registeredAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                         </td>

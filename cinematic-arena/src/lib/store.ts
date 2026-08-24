@@ -43,6 +43,11 @@ let cachedUsers: ApiUser[] = [];
 let hydrated = false;
 
 const listeners = new Set<() => void>();
+let version = 0;
+
+export function getStoreVersion() {
+  return version;
+}
 
 export function subscribeStore(fn: () => void) {
   listeners.add(fn);
@@ -52,6 +57,7 @@ export function subscribeStore(fn: () => void) {
 }
 
 function emit() {
+  version += 1;
   listeners.forEach((fn) => fn());
 }
 

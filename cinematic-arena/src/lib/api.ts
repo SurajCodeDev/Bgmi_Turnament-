@@ -121,14 +121,33 @@ export async function apiUnregisterFromTournament(userId: string, tournamentId: 
 
 // ---- Wallet ----
 
+export interface PaymentProof {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  upiId: string;
+  upiTxnRef: string;
+  note: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface PaymentConfig {
+  ok: boolean;
+  upiId: string;
+  whatsappNumber: string;
+  payeeName: string;
+}
+
 export async function apiGetWallet() {
   return json<{ ok: boolean; balance: number; transactions: ApiTransaction[] }>("/api/wallet");
 }
 
-export async function apiTopUp(amount: number) {
-  return json<{ ok: boolean; balance: number; error?: string }>("/api/wallet/topup", {
+export async function apiTopUp(amount: number, upiTxnRef?: string, note?: string) {
+  return json<{ ok: boolean; balance: number; payment?: PaymentProof; error?: string }>("/api/wallet/topup", {
     method: "POST",
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, upiTxnRef, note }),
   });
 }
 
@@ -137,6 +156,14 @@ export async function apiWithdraw(amount: number) {
     method: "POST",
     body: JSON.stringify({ amount }),
   });
+}
+
+export async function apiGetPaymentConfig(): Promise<PaymentConfig> {
+  return json<PaymentConfig>("/api/payment/config");
+}
+
+export async function apiGetPayments(): Promise<{ ok: boolean; payments: PaymentProof[] }> {
+  return json<{ ok: boolean; payments: PaymentProof[] }>("/api/payments");
 }
 
 // ---- Prize ----

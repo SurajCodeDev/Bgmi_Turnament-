@@ -51,7 +51,19 @@ interface DBShape {
     status: string;
     createdAt: string;
   }[];
+  payments: {
+    id: string;
+    userId: string;
+    userName: string;
+    amount: number;
+    upiId: string;
+    upiTxnRef: string;
+    note: string;
+    status: string;
+    createdAt: string;
+  }[];
   telegram: { enabled: boolean; botToken: string; channelId: string; announcements: string[] };
+  payment: { upiId: string; whatsappNumber: string; payeeName: string };
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -91,6 +103,12 @@ const seedDB: DBShape = {
     { id: "tx-2", userId: "u-demo", label: "Entry Fee — Rising Stars Cup", amount: -99, status: "PAID", createdAt: "2024-08-20" },
   ],
   telegram: { enabled: false, botToken: "", channelId: "", announcements: [] },
+  payments: [],
+  payment: {
+    upiId: "ksuraj138@ybl",
+    whatsappNumber: "917015742792",
+    payeeName: "NEXT LEVEL ARENA",
+  },
 };
 
 function defaultDB(): DBShape {
@@ -110,6 +128,7 @@ export function readDB(): DBShape {
       ...base,
       ...parsed,
       telegram: { ...base.telegram, ...(parsed.telegram || {}) },
+      payment: { ...base.payment, ...(parsed.payment || {}) },
     };
     merged.users = (merged.users || []).map((u) => ({ ...u, wallet: typeof u.wallet === "number" ? u.wallet : 0 }));
     merged.registrations = (merged.registrations || []).map((r) => ({
@@ -117,6 +136,7 @@ export function readDB(): DBShape {
       members: Array.isArray(r.members) ? r.members : [],
       claimed: !!r.claimed,
     }));
+    merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
     return merged;
   } catch {
     return defaultDB();

@@ -11,11 +11,27 @@ function makeRef(): string {
   return out;
 }
 
+export async function GET() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get(SESSION_COOKIE)?.value;
+  const db = readDB();
+  if (!userId) {
+    return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  }
+  const user = db.users.find((u) => u.id === userId);
+  const payments =
+    user?.role === "admin"
+      ? db.payments
+      : db.payments.filter((p) => p.userId === userId);
+  const sorted = [...payments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  return NextResponse.json({ ok: true, payments: sorted });
+}
+
 export async function POST(req: Request) {
   const { amount, upiTxnRef, note } = await req.json();
   const n = Math.floor(Number(amount) || 0);
-  if (n <= 0 || n > 1000000) {
-    return NextResponse.json({ ok: false, error: "Enter a valid amount between ₹1 and ₹10,00,000." }, { status: 400 });
+  if (n <= 0) {
+    return NextResponse.json({ ok: false, error: "Enter a valid amount." }, { status: 400 });
   }
 
   const cookieStore = await cookies();
@@ -26,31 +42,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
 
-  const txnRef = String(upiTxnRef || makeRef()).trim();
-  user.wallet += n;
-
-  db.transactions.push({
-    id: `tx-${Date.now()}`,
-    userId: user.id,
-    label: "Wallet Top-up (UPI)",
-    amount: n,
-    status: "CREDITED",
-    createdAt: new Date().toISOString(),
-  });
-
   const payment = {
     id: `pay-${Date.now()}`,
     userId: user.id,
     userName: user.name,
     amount: n,
     upiId: db.payment.upiId,
-    upiTxnRef: txnRef,
+    upiTxnRef: String(upiTxnRef || makeRef()).trim(),
     note: String(note || "").trim(),
-    status: "VERIFIED",
+    status: "PENDING VERIFICATION",
     createdAt: new Date().toISOString(),
   };
+
   db.payments.push(payment);
   writeDB(db);
 
-  return NextResponse.json({ ok: true, balance: user.wallet, payment });
+  return NextResponse.json({ ok: true, payment });
 }

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
+import { apiGetPayments, apiGetPaymentConfig, type PaymentProof } from "@/lib/api";
+import { formatINR } from "@/lib/arena";
 import {
   getTournaments,
   updateTournament,
@@ -46,11 +48,24 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Tournament | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [toast, setToast] = useState("");
-  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations">("tournaments");
+  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations" | "payments">("tournaments");
   const [regFilter, setRegFilter] = useState("");
+  const [payments, setPayments] = useState<PaymentProof[]>([]);
+  const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string } | null>(null);
 
   useEffect(() => {
     setTournaments(getTournaments());
+  }, [refresh]);
+
+  useEffect(() => {
+    apiGetPayments()
+      .then((res) => {
+        if (res.ok) setPayments(res.payments);
+      })
+      .catch(() => {});
+    apiGetPaymentConfig()
+      .then(setPayConfig)
+      .catch(() => {});
   }, [refresh]);
 
   if (loading) return null;
@@ -161,7 +176,7 @@ export default function AdminPage() {
         </motion.div>
 
         <div className="mb-8 flex gap-1 overflow-x-auto border-b border-[#1a2134]">
-          {(["overview", "tournaments", "registrations", "users", "matches"] as const).map((tb) => (
+          {(["overview", "tournaments", "registrations", "payments", "users", "matches"] as const).map((tb) => (
             <button
               key={tb}
               onClick={() => setTab(tb)}
@@ -419,6 +434,76 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "payments" && (
+          <div className="space-y-4">
+            <div className="holo-panel clip-corner flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">YOUR UPI DETAILS</p>
+                <p className="mt-1 break-all font-display text-sm font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
+                <p className="mt-1 font-body text-[9px] tracking-[0.2em] text-slate-500">PAYMENT PROOF WHATSAPP: +{payConfig?.whatsappNumber || "917015742792"}</p>
+              </div>
+              <p className="font-body text-[11px] tracking-[0.2em] text-slate-400">
+                TOTAL PAYMENTS: <span className="font-bold text-cyan-400">{payments.length}</span>
+              </p>
+            </div>
+
+            {payments.length === 0 ? (
+              <div className="holo-panel clip-corner flex flex-col items-center py-16 text-center">
+                <p className="font-display text-sm font-bold text-white">NO PAYMENTS YET</p>
+                <p className="mt-2 font-body text-xs text-slate-500">Player top-ups will appear here with payment proof details.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {payments.map((p, i) => {
+                  const waMsg = [
+                    "NEXT LEVEL ARENA - PAYMENT PROOF",
+                    "--------------------------------",
+                    `Player: ${p.userName}`,
+                    `Amount: ${formatINR(p.amount)}`,
+                    `UPI ID: ${p.upiId}`,
+                    `Txn Ref: ${p.upiTxnRef}`,
+                    p.note ? `Note: ${p.note}` : "",
+                    `Status: ${p.status}`,
+                    `Time: ${new Date(p.createdAt).toLocaleString("en-IN")}`,
+                  ].filter(Boolean).join("\n");
+                  const waLink = `https://wa.me/${payConfig?.whatsappNumber || "917015742792"}?text=${encodeURIComponent(waMsg)}`;
+                  return (
+                    <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="border border-[#1a2134] bg-[#0a0d16]/70 p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-base font-black text-cyan-400">
+                            {p.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-body text-sm font-semibold text-slate-200">{p.userName}</p>
+                            <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">
+                              {formatINR(p.amount)} · {p.upiTxnRef} · {new Date(p.createdAt).toLocaleString("en-IN")}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/5 px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] text-emerald-400">
+                          {p.status}
+                        </span>
+                      </div>
+                      {p.note && (
+                        <p className="mt-3 border-t border-[#1a2134] pt-3 font-body text-xs italic text-slate-400">
+                          NOTE: {p.note}
+                        </p>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-primary px-4 py-2 font-display text-[10px]">
+                          VIEW / FORWARD ON WHATSAPP
+                        </a>
+                        <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">PAID TO {p.upiId}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>

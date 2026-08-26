@@ -12,7 +12,7 @@ import {
   type Registration,
 } from "@/lib/store";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
-import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, type ApiTransaction } from "@/lib/api";
+import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, type ApiTransaction, type PaymentConfig, type PaymentProof } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
 
 export default function DashboardPage() {
@@ -24,10 +24,20 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<ApiTransaction[]>([]);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
+  const [upiTxnRef, setUpiTxnRef] = useState("");
+  const [payNote, setPayNote] = useState("");
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [toast, setToast] = useState("");
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [payConfig, setPayConfig] = useState<PaymentConfig | null>(null);
+  const [lastPayment, setLastPayment] = useState<PaymentProof | null>(null);
+
+  useEffect(() => {
+    apiGetPaymentConfig()
+      .then(setPayConfig)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (user) setRegistrations(getRegistrationsForUser(user.id));
@@ -73,11 +83,14 @@ export default function DashboardPage() {
       showToast("ENTER A VALID AMOUNT");
       return;
     }
-    const res = await apiTopUp(n);
+    const res = await apiTopUp(n, upiTxnRef, payNote);
     if (res.ok) {
       setBalance(res.balance);
       setTopupOpen(false);
+      setLastPayment(res.payment || null);
       setTopupAmount("");
+      setUpiTxnRef("");
+      setPayNote("");
       showToast("FUNDS ADDED SUCCESSFULLY");
     } else {
       showToast(res.error || "TOP-UP FAILED");
@@ -119,6 +132,24 @@ export default function DashboardPage() {
     .filter((t): t is NonNullable<typeof t> => !!t);
 
   const player = getPlayers().find((p) => p.name.toLowerCase() === user.name.toLowerCase());
+
+  const whatsappLink = (p: PaymentProof) => {
+    const num = payConfig?.whatsappNumber || "917015742792";
+    const msg = [
+      "NEXT LEVEL ARENA - PAYMENT PROOF",
+      "--------------------------------",
+      `Player: ${p.userName}`,
+      `Amount: ${formatINR(p.amount)}`,
+      `UPI ID (paid to): ${p.upiId}`,
+      `UPI Txn Ref: ${p.upiTxnRef}`,
+      p.note ? `Note: ${p.note}` : "",
+      `Status: ${p.status}`,
+      `Time: ${new Date(p.createdAt).toLocaleString("en-IN")}`,
+      "--------------------------------",
+      "Please verify my payment. Thank you!",
+    ].filter(Boolean).join("\n");
+    return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden px-6 py-24">
@@ -330,12 +361,19 @@ export default function DashboardPage() {
               className="holo-panel scanline clip-corner w-full max-w-sm p-6"
             >
               <p className="mb-1 font-display text-sm font-bold tracking-[0.3em] text-white">ADD FUNDS</p>
-              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">MOCK UPI PAYMENT</p>
+              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">PAY VIA UPI AND WE CREDIT YOUR WALLET</p>
+
+              <div className="mb-4 border border-cyan-400/40 bg-cyan-400/5 p-4">
+                <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">PAY TO THIS UPI ID</p>
+                <p className="mt-1 break-all font-display text-sm font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
+                <p className="mt-1 font-body text-[9px] tracking-[0.2em] text-slate-500">PAYEE: {payConfig?.payeeName || "NEXT LEVEL ARENA"}</p>
+              </div>
+
               <input
                 type="number"
                 value={topupAmount}
                 onChange={(e) => setTopupAmount(e.target.value)}
-                placeholder="Enter amount"
+                placeholder="Enter amount (₹)"
                 className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-3 font-body text-sm text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
               />
               <div className="mt-3 flex flex-wrap gap-2">
@@ -349,8 +387,26 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <input
+                  type="text"
+                  value={upiTxnRef}
+                  onChange={(e) => setUpiTxnRef(e.target.value)}
+                  placeholder="UPI Transaction Ref (optional)"
+                  className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-2.5 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                />
+                <input
+                  type="text"
+                  value={payNote}
+                  onChange={(e) => setPayNote(e.target.value)}
+                  placeholder="Note for admin (optional)"
+                  className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-2.5 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                />
+              </div>
+
               <button onClick={handleTopup} className="btn-primary mt-5 w-full px-4 py-3 font-display text-xs">
-                PAY {topupAmount ? `₹${topupAmount}` : ""} VIA UPI
+                I HAVE PAID {topupAmount ? `₹${topupAmount}` : ""} VIA UPI
               </button>
             </motion.div>
           </motion.div>
@@ -384,6 +440,71 @@ export default function DashboardPage() {
               />
               <button onClick={handleWithdraw} className="btn-primary mt-5 w-full px-4 py-3 font-display text-xs">
                 REQUEST WITHDRAWAL
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {lastPayment && payConfig && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[910] flex items-center justify-center bg-black/80 px-6"
+            onClick={() => setLastPayment(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="holo-panel scanline clip-corner w-full max-w-md p-6"
+            >
+              <div className="mb-4 flex items-center gap-2 border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                <p className="font-body text-[10px] font-semibold tracking-[0.25em] text-emerald-400">PAYMENT RECEIVED · WALLET CREDITED</p>
+              </div>
+
+              <p className="mb-4 font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENT PROOF</p>
+              <div className="space-y-2 border border-[#1a2134] bg-[#0a0d16]/60 p-4 font-body text-xs text-slate-300">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">AMOUNT</span>
+                  <span className="font-bold text-cyan-400">{formatINR(lastPayment.amount)}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="shrink-0 text-slate-500">PAID TO</span>
+                  <span className="break-all text-right">{lastPayment.upiId}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="shrink-0 text-slate-500">TXN REF</span>
+                  <span className="text-right">{lastPayment.upiTxnRef}</span>
+                </div>
+                {lastPayment.note && (
+                  <div className="flex justify-between gap-4">
+                    <span className="shrink-0 text-slate-500">NOTE</span>
+                    <span className="text-right text-slate-400">{lastPayment.note}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-slate-500">STATUS</span>
+                  <span className="font-semibold text-emerald-400">{lastPayment.status}</span>
+                </div>
+              </div>
+
+              <p className="mt-4 border-l-2 border-cyan-400/60 bg-[#0a0d16]/40 px-4 py-3 font-body text-[11px] leading-relaxed text-slate-400">
+                Aapka payment proof ready hai. Niche button dabao to payment proof WhatsApp par admin (7015742792) ko bheja jayega.
+              </p>
+
+              <a
+                href={whatsappLink(lastPayment)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 font-display text-xs"
+              >
+                SEND PAYMENT PROOF ON WHATSAPP
+              </a>
+              <button onClick={() => setLastPayment(null)} className="btn-ghost mt-2 w-full px-4 py-2.5 font-display text-[10px]">
+                CLOSE
               </button>
             </motion.div>
           </motion.div>

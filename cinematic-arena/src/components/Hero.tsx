@@ -22,7 +22,7 @@ export function Hero() {
     <section id="arena" className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
         <img
-          src="/images/bgmi-5.jpg"
+          src="/images/bgmi-hero.jpg"
           alt="BGMI battle arena"
           className="h-full w-full object-cover opacity-30"
         />

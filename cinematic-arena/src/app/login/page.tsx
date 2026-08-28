@@ -25,7 +25,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
     if (mode === "password") {
       const res = await login(identifier, password);
       if (!res.ok) setError(res.error || "Login failed.");

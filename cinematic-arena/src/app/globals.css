@@ -101,15 +101,16 @@ a {
   top: -40%;
   background: linear-gradient(180deg, transparent, rgba(34, 211, 238, 0.12), transparent);
   animation: scan 6s linear infinite;
+  will-change: transform;
   pointer-events: none;
 }
 
 @keyframes scan {
   0% {
-    top: -40%;
+    transform: translateY(0);
   }
   100% {
-    top: 140%;
+    transform: translateY(450%);
   }
 }
 

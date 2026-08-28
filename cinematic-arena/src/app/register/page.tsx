@@ -44,7 +44,6 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
     const res = await register({
       name: name.trim(),
       email: email.trim(),

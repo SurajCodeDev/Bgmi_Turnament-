@@ -1,6 +1,7 @@
 import { Hero } from "@/components/Hero";
 import { StorySection } from "@/components/StorySection";
 import { TournamentSection } from "@/components/TournamentSection";
+import { HackerSection } from "@/components/HackerSection";
 import { LiveStreamSection } from "@/components/LiveStreamSection";
 import { LiveCommandCenter } from "@/components/LiveCommandCenter";
 import { LeaderboardSection } from "@/components/LeaderboardSection";
@@ -14,6 +15,7 @@ export default function Home() {
       <Hero />
       <StorySection />
       <TournamentSection />
+      <HackerSection />
       <LiveStreamSection />
       <LiveCommandCenter />
       <LeaderboardSection />

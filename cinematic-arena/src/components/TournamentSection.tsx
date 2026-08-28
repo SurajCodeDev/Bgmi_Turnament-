@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { getTournaments, type Tournament } from "@/lib/store";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
@@ -11,6 +12,9 @@ const statusColor: Record<Tournament["status"], string> = {
   UPCOMING: "text-blue-400 border-blue-500/50",
   COMPLETED: "text-slate-500 border-slate-600/50",
 };
+
+type ModeFilter = "ALL" | "SOLO" | "DUO" | "SQUAD";
+const MODE_FILTERS: ModeFilter[] = ["ALL", "SOLO", "DUO", "SQUAD"];
 
 function TournamentCard({ t, featured }: { t: Tournament; featured?: boolean }) {
   const pct = t.teams > 0 ? Math.min(100, Math.round((t.teamsJoined / t.teams) * 100)) : 0;
@@ -33,6 +37,11 @@ function TournamentCard({ t, featured }: { t: Tournament; featured?: boolean }) 
         <div className="mb-4 flex items-center justify-between">
           <span className="font-body text-[10px] tracking-[0.25em] text-slate-500">{t.game} / TOURNAMENT</span>
           <div className="flex items-center gap-1.5">
+            {t.tag === "HACKER" && (
+              <span className="rounded-sm border border-red-500/50 bg-red-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-red-400">
+                HACKER
+              </span>
+            )}
             {isFreeTournament(t) ? (
               <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-emerald-400">
                 FREE
@@ -94,12 +103,14 @@ function TournamentCard({ t, featured }: { t: Tournament; featured?: boolean }) 
 export function TournamentSection() {
   useStoreRefresh();
   const tournaments = getTournaments();
-  const active = tournaments.filter((t) => t.status !== "COMPLETED");
+  const [mode, setMode] = useState<ModeFilter>("ALL");
+  const active = tournaments.filter((t) => t.status !== "COMPLETED" && t.tag !== "HACKER");
+  const filtered = mode === "ALL" ? active : active.filter((t) => t.mode === mode);
 
   return (
     <section id="tournaments" className="relative py-24">
       <div className="mx-auto max-w-[1400px] px-6">
-        <div className="mb-14 flex flex-col items-center text-center">
+        <div className="mb-10 flex flex-col items-center text-center">
           <span className="section-label mb-3">TOURNAMENTS</span>
           <h2 className="font-display text-3xl font-black tracking-wide text-white sm:text-5xl">
             UPCOMING <span className="text-cyan-400">EVENTS</span>
@@ -110,10 +121,31 @@ export function TournamentSection() {
           </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {active.map((t, i) => (
-            <TournamentCard key={t.id} t={t} featured={i === 0} />
+        <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
+          {MODE_FILTERS.map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`rounded-sm border px-4 py-2 font-display text-[11px] tracking-[0.15em] transition-colors ${
+                mode === m
+                  ? "border-cyan-400 bg-cyan-400/10 text-cyan-400 shadow-glow"
+                  : "border-[#1a2134] text-slate-500 hover:border-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {m}
+            </button>
           ))}
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {filtered.map((t, i) => (
+            <TournamentCard key={t.id} t={t} featured={i === 0 && mode === "ALL"} />
+          ))}
+          {filtered.length === 0 && (
+            <p className="col-span-full py-16 text-center font-body text-sm tracking-[0.2em] text-slate-500">
+              NO {mode} EVENTS SCHEDULED
+            </p>
+          )}
         </div>
       </div>
     </section>

@@ -19,6 +19,7 @@ export interface Tournament {
   map: string;
   rules: string[];
   image: string;
+  tag?: string;
 }
 
 export interface Team {
@@ -233,6 +234,52 @@ export const tournaments: Tournament[] = [
     image: "/images/bgmi-8.jpg",
     rules: ["Invite-only top teams.", "LAN finals in Mumbai."],
   },
+  {
+    id: "t-009",
+    name: "HACKER vs HACKER — Shadow Strike",
+    short: "SHADOW STRIKE",
+    game: "BGMI",
+    status: "REGISTRATION OPEN",
+    mode: "SQUAD",
+    tag: "HACKER",
+    prizePool: "₹1,00,000",
+    entryFee: "₹49",
+    teams: 64,
+    teamsJoined: 41,
+    date: "28 AUG",
+    time: "11:00 PM",
+    format: "Hacker Point Battle",
+    map: "SANHOK",
+    image: "/images/bgmi-5.jpg",
+    rules: [
+      "Hacker vs Hacker — no bans, full chaos.",
+      "Squad vs squad, kill-based scoring.",
+      "Aimbot & ESP allowed. Nothing is off-limits.",
+    ],
+  },
+  {
+    id: "t-010",
+    name: "HACKER vs HACKER — Ghost Protocol",
+    short: "GHOST PROTOCOL",
+    game: "BGMI",
+    status: "UPCOMING",
+    mode: "SOLO",
+    tag: "HACKER",
+    prizePool: "₹40,000",
+    entryFee: "FREE",
+    teams: 100,
+    teamsJoined: 12,
+    date: "02 SEP",
+    time: "12:00 AM",
+    format: "Solo Hack-Off",
+    map: "MIRAMAR",
+    image: "/images/bgmi-6.jpg",
+    rules: [
+      "Solo hack-off, last hacker standing.",
+      "Speed hacks, teleport, wall-bang — all allowed.",
+      "Winners verified via screen-record replay.",
+    ],
+  },
 ];
 
 export const teams: Team[] = [
@@ -420,6 +467,7 @@ export const scoringRules = [
 export const navLinks = [
   { label: "ARENA", href: "#arena" },
   { label: "TOURNAMENTS", href: "#tournaments" },
+  { label: "HACKERS", href: "#hacker" },
   { label: "LIVE", href: "#live" },
   { label: "LEADERBOARD", href: "#leaderboard" },
   { label: "CHAMPIONS", href: "#champions" },

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
+import { getSessionUser } from "@/lib/server/auth";
 import { entryFeeNumber, isFreeTournament, isInviteOnly } from "@/lib/arena";
 
 export async function GET(req: Request) {
@@ -11,8 +12,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId, tournamentId, teamName, playerName, playerUid, playerEmail, members } = await req.json();
+  const { tournamentId, teamName, playerName, playerUid, playerEmail, members } = await req.json();
   const db = readDB();
+  const user = await getSessionUser(db);
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  }
+  const userId = user.id;
 
   if (db.registrations.some((r) => r.userId === userId && r.tournamentId === tournamentId)) {
     return NextResponse.json({ ok: false, error: "Already registered." }, { status: 409 });
@@ -27,11 +33,6 @@ export async function POST(req: Request) {
   }
   if (isInviteOnly(t)) {
     return NextResponse.json({ ok: false, error: "This tournament is invite-only." }, { status: 403 });
-  }
-
-  const user = db.users.find((u) => u.id === userId);
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "User not found." }, { status: 401 });
   }
 
   const fee = entryFeeNumber(t);
@@ -62,17 +63,13 @@ export async function POST(req: Request) {
         .filter((m: { name: string; uid: string }) => m.name && m.uid)
     : [];
 
-  const fallbackName = user?.name ?? "Player";
-  const fallbackUid = user?.uid ?? "—";
-  const fallbackEmail = user?.email ?? "—";
-
   db.registrations.push({
     userId,
     tournamentId,
     tournamentName: t.name,
-    playerName: playerName || fallbackName,
-    playerUid: playerUid || fallbackUid,
-    playerEmail: playerEmail || fallbackEmail,
+    playerName: playerName || user.name,
+    playerUid: playerUid || user.uid,
+    playerEmail: playerEmail || user.email,
     teamName: teamName || "Team Solo",
     members: cleanMembers,
     claimed: false,
@@ -85,8 +82,13 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const { userId, tournamentId } = await req.json();
+  const { tournamentId } = await req.json();
   const db = readDB();
+  const user = await getSessionUser(db);
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
+  }
+  const userId = user.id;
 
   const before = db.registrations.length;
   db.registrations = db.registrations.filter(

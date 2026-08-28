@@ -6,11 +6,14 @@ export interface ServerUser {
   id: string;
   name: string;
   email: string;
+  phone: string;
   password: string;
   role: "admin" | "player";
   uid: string;
   team: string;
   wallet: number;
+  emailVerified: boolean;
+  phoneVerified: boolean;
   createdAt: string;
 }
 
@@ -64,14 +67,23 @@ interface DBShape {
   }[];
   telegram: { enabled: boolean; botToken: string; channelId: string; announcements: string[] };
   payment: { upiId: string; whatsappNumber: string; payeeName: string };
+  otps: {
+    id: string;
+    userId: string;
+    identifier: string;
+    otp: string;
+    purpose: string;
+    expiresAt: number;
+    consumed: boolean;
+  }[];
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 const seedUsers: ServerUser[] = [
-  { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, createdAt: "2024-08-01" },
-  { id: "u-demo", name: "Viper", email: "player@arena.in", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, createdAt: "2024-08-01" },
+  { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", phone: "7000000001", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
+  { id: "u-demo", name: "Viper", email: "player@arena.in", phone: "7001234567", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
 ];
 
 const seedDB: DBShape = {
@@ -109,6 +121,7 @@ const seedDB: DBShape = {
     whatsappNumber: "917015742792",
     payeeName: "NEXT LEVEL ARENA",
   },
+  otps: [],
 };
 
 function defaultDB(): DBShape {
@@ -130,13 +143,31 @@ export function readDB(): DBShape {
       telegram: { ...base.telegram, ...(parsed.telegram || {}) },
       payment: { ...base.payment, ...(parsed.payment || {}) },
     };
-    merged.users = (merged.users || []).map((u) => ({ ...u, wallet: typeof u.wallet === "number" ? u.wallet : 0 }));
+    merged.users = (merged.users || []).map((u) => ({
+      ...u,
+      wallet: typeof u.wallet === "number" ? u.wallet : 0,
+      phone: u.phone || "",
+      emailVerified: !!u.emailVerified,
+      phoneVerified: !!u.phoneVerified,
+    }));
     merged.registrations = (merged.registrations || []).map((r) => ({
       ...r,
       members: Array.isArray(r.members) ? r.members : [],
       claimed: !!r.claimed,
     }));
+    merged.tournaments = (merged.tournaments || []).map((t) => ({
+      ...t,
+      tag: t.tag || undefined,
+    }));
+    const knownIds = new Set(merged.tournaments.map((t) => t.id));
+    for (const seedT of seedTournaments) {
+      if (!knownIds.has(seedT.id)) {
+        merged.tournaments.push(seedT);
+        knownIds.add(seedT.id);
+      }
+    }
     merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
+    merged.otps = Array.isArray(merged.otps) ? merged.otps : [];
     return merged;
   } catch {
     return defaultDB();

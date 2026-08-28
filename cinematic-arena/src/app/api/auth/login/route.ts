@@ -1,30 +1,24 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { readDB, writeDB } from "@/lib/server/db";
-
-const SESSION_COOKIE = "nla_session";
+import { readDB } from "@/lib/server/db";
+import { createSession, safeUser } from "@/lib/server/auth";
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json();
+  const { identifier, password } = await req.json();
+  const id = String(identifier || "").trim().toLowerCase();
+
+  if (!id || !password) {
+    return NextResponse.json({ ok: false, error: "Email/Mobile and password required." }, { status: 400 });
+  }
+
   const db = readDB();
   const user = db.users.find(
-    (u) => u.email.toLowerCase() === (email || "").toString().toLowerCase() && u.password === password
+    (u) => u.email.toLowerCase() === id || u.phone === id
   );
 
-  if (!user) {
+  if (!user || user.password !== password) {
     return NextResponse.json({ ok: false, error: "Invalid credentials." }, { status: 401 });
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, user.id, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
-
-  return NextResponse.json({
-    ok: true,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, uid: user.uid, team: user.team, wallet: user.wallet },
-  });
+  await createSession(user);
+  return NextResponse.json({ ok: true, user: safeUser(user) });
 }

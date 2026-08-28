@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { readDB } from "@/lib/server/db";
-
-const SESSION_COOKIE = "nla_session";
+import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value;
   const db = readDB();
-  const user = db.users.find((u) => u.id === userId);
+  const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { readDB, writeDB } from "@/lib/server/db";
-
-const SESSION_COOKIE = "nla_session";
+import { getSessionUser } from "@/lib/server/auth";
 
 function makeRef(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
@@ -12,17 +10,15 @@ function makeRef(): string {
 }
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value;
   const db = readDB();
-  if (!userId) {
+  const user = await getSessionUser(db);
+  if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
-  const user = db.users.find((u) => u.id === userId);
   const payments =
-    user?.role === "admin"
+    user.role === "admin"
       ? db.payments
-      : db.payments.filter((p) => p.userId === userId);
+      : db.payments.filter((p) => p.userId === user.id);
   const sorted = [...payments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   return NextResponse.json({ ok: true, payments: sorted });
 }
@@ -34,10 +30,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid amount." }, { status: 400 });
   }
 
-  const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value;
   const db = readDB();
-  const user = db.users.find((u) => u.id === userId);
+  const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }

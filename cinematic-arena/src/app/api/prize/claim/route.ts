@@ -1,22 +1,18 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { readDB, writeDB } from "@/lib/server/db";
+import { getSessionUser } from "@/lib/server/auth";
 import { prizeNumber, squadSizeFor } from "@/lib/arena";
-
-const SESSION_COOKIE = "nla_session";
 
 export async function POST(req: Request) {
   const { tournamentId } = await req.json();
 
-  const cookieStore = await cookies();
-  const userId = cookieStore.get(SESSION_COOKIE)?.value;
   const db = readDB();
-  const user = db.users.find((u) => u.id === userId);
+  const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
 
-  const reg = db.registrations.find((r) => r.userId === userId && r.tournamentId === tournamentId);
+  const reg = db.registrations.find((r) => r.userId === user.id && r.tournamentId === tournamentId);
   if (!reg) {
     return NextResponse.json({ ok: false, error: "You are not registered for this tournament." }, { status: 404 });
   }

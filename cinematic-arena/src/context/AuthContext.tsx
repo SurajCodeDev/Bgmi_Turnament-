@@ -1,22 +1,36 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { apiLogin, apiLogout, apiMe, apiRegister } from "@/lib/api";
+import { apiLogin, apiLoginWithIdentifier, apiLogout, apiMe, apiRegister, apiSendOtp, apiVerifyOtp } from "@/lib/api";
 
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  phone: string;
   role: "admin" | "player";
   uid: string;
   team: string;
+  wallet: number;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+}
+
+interface RegisterResult {
+  ok: boolean;
+  error?: string;
+  pendingUserId?: string;
+  mockOtp?: string | null;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  register: (data: { name: string; email: string; password: string; uid: string; team: string }) => Promise<{ ok: boolean; error?: string }>;
+  login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  sendOtp: (identifier: string, purpose?: string) => Promise<{ ok: boolean; error?: string; mockOtp?: string | null; sentTo?: string }>;
+  verifyOtp: (identifier: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
+  register: (data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) => Promise<RegisterResult>;
+  verifyRegistration: (pendingUserId: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -38,8 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await apiLogin(email, password);
+  const login = useCallback(async (identifier: string, password: string) => {
+    const res = await apiLoginWithIdentifier(identifier, password);
     if (!res.ok || !res.user) {
       return { ok: false, error: res.error || "Login failed." };
     }
@@ -47,10 +61,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { ok: true };
   }, []);
 
-  const register = useCallback(async (data: { name: string; email: string; password: string; uid: string; team: string }) => {
-    const res = await apiRegister(data);
+  const sendOtp = useCallback(async (identifier: string, purpose = "login") => {
+    return apiSendOtp(identifier, purpose);
+  }, []);
+
+  const verifyOtp = useCallback(async (identifier: string, otp: string) => {
+    const res = await apiVerifyOtp({ identifier, otp, purpose: "login" });
     if (!res.ok || !res.user) {
+      return { ok: false, error: res.error || "Verification failed." };
+    }
+    setUser(res.user);
+    return { ok: true };
+  }, []);
+
+  const register = useCallback(async (data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) => {
+    const res = await apiRegister(data);
+    if (!res.ok) {
       return { ok: false, error: res.error || "Registration failed." };
+    }
+    return { ok: true, pendingUserId: res.pendingUserId, mockOtp: res.mockOtp };
+  }, []);
+
+  const verifyRegistration = useCallback(async (pendingUserId: string, otp: string) => {
+    const res = await apiVerifyOtp({ userId: pendingUserId, otp, purpose: "register" });
+    if (!res.ok || !res.user) {
+      return { ok: false, error: res.error || "Verification failed." };
     }
     setUser(res.user);
     return { ok: true };
@@ -62,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, sendOtp, verifyOtp, register, verifyRegistration, logout }}>
       {children}
     </AuthContext.Provider>
   );

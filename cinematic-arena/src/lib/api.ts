@@ -5,10 +5,13 @@ export interface ApiUser {
   id: string;
   name: string;
   email: string;
+  phone: string;
   role: "admin" | "player";
   uid: string;
   team: string;
   wallet: number;
+  emailVerified: boolean;
+  phoneVerified: boolean;
 }
 
 export interface ApiRegistrationMember {
@@ -51,12 +54,33 @@ async function json<T>(url: string, options?: RequestInit): Promise<T> {
 export async function apiLogin(email: string, password: string) {
   return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier: email, password }),
   });
 }
 
-export async function apiRegister(data: { name: string; email: string; password: string; uid: string; team: string }) {
-  return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/auth/register", {
+export async function apiLoginWithIdentifier(identifier: string, password: string) {
+  return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ identifier, password }),
+  });
+}
+
+export async function apiRegister(data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) {
+  return json<{ ok: boolean; error?: string; pendingUserId?: string; mockOtp?: string | null }>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiSendOtp(identifier: string, purpose = "login") {
+  return json<{ ok: boolean; error?: string; mockOtp?: string | null; sentTo?: string }>("/api/auth/otp/send", {
+    method: "POST",
+    body: JSON.stringify({ identifier, purpose }),
+  });
+}
+
+export async function apiVerifyOtp(data: { userId?: string; identifier?: string; otp: string; purpose?: string }) {
+  return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/auth/otp/verify", {
     method: "POST",
     body: JSON.stringify(data),
   });

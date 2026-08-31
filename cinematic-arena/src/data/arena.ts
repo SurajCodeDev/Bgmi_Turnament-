@@ -20,6 +20,7 @@ export interface Tournament {
   rules: string[];
   image: string;
   tag?: string;
+  winner?: string;
 }
 
 export interface Team {
@@ -484,7 +485,7 @@ export interface Match {
   date: string;
   time: string;
   status: MatchStatus;
-  teams: { name: string; tag: string; points: number }[];
+  teams: { name: string; tag: string; points: number; kills?: number; placements?: number }[];
   roomId?: string;
   password?: string;
   stream?: string;
@@ -639,6 +640,7 @@ export interface Notification {
   message: string;
   date: string;
   read: boolean;
+  userId?: string;
 }
 
 export const defaultNotifications: Notification[] = [

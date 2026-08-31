@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
-import { prizeNumber, squadSizeFor } from "@/lib/arena";
+import { prizeNumber } from "@/lib/arena";
 
 export async function POST(req: Request) {
   const { tournamentId } = await req.json();
@@ -21,11 +21,17 @@ export async function POST(req: Request) {
   }
 
   const t = db.tournaments.find((x) => x.id === tournamentId);
-  if (!t || t.status !== "COMPLETED") {
+  if (!t) {
+    return NextResponse.json({ ok: false, error: "Tournament not found." }, { status: 404 });
+  }
+  if (t.status !== "COMPLETED") {
     return NextResponse.json({ ok: false, error: "Prize available only after tournament completion." }, { status: 400 });
   }
+  if (!t.winner || (reg.teamName.toLowerCase() !== t.winner.toLowerCase() && reg.playerName.toLowerCase() !== t.winner.toLowerCase())) {
+    return NextResponse.json({ ok: false, error: "Only the declared winning team can claim the prize." }, { status: 403 });
+  }
 
-  const share = Math.floor(prizeNumber(t) / squadSizeFor(t.mode));
+  const share = Math.floor(prizeNumber(t) * 0.5);
   user.wallet += share;
   reg.claimed = true;
   db.transactions.push({

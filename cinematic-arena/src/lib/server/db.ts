@@ -17,6 +17,8 @@ export interface ServerUser {
   createdAt: string;
 }
 
+export type RegistrationStatus = "PAID" | "PENDING" | "WALLET" | "FREE";
+
 export interface ServerRegistration {
   userId: string;
   tournamentId: string;
@@ -27,7 +29,46 @@ export interface ServerRegistration {
   teamName: string;
   members: { name: string; uid: string }[];
   claimed: boolean;
+  status: RegistrationStatus;
+  paymentId?: string;
   registeredAt: string;
+}
+
+export interface ServerPayment {
+  id: string;
+  userId: string;
+  userName: string;
+  amount: number;
+  upiId: string;
+  upiTxnRef: string;
+  note: string;
+  status: string;
+  createdAt: string;
+  type?: "TOPUP" | "ENTRY";
+  tournamentId?: string;
+  tournamentName?: string;
+  verifyRemarks?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
+
+export interface ServerWithdrawal {
+  id: string;
+  userId: string;
+  userName: string;
+  upiId: string;
+  amount: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  processedAt?: string;
+  remarks?: string;
+}
+
+export interface ServerRoom {
+  tournamentId: string;
+  roomId: string;
+  password: string;
+  updatedAt: string;
 }
 
 interface DBShape {
@@ -54,17 +95,9 @@ interface DBShape {
     status: string;
     createdAt: string;
   }[];
-  payments: {
-    id: string;
-    userId: string;
-    userName: string;
-    amount: number;
-    upiId: string;
-    upiTxnRef: string;
-    note: string;
-    status: string;
-    createdAt: string;
-  }[];
+  payments: ServerPayment[];
+  withdrawals: ServerWithdrawal[];
+  rooms: ServerRoom[];
   telegram: { enabled: boolean; botToken: string; channelId: string; announcements: string[] };
   payment: { upiId: string; whatsappNumber: string; payeeName: string };
   otps: {
@@ -104,6 +137,7 @@ const seedDB: DBShape = {
         { name: "Frost", uid: "5404444555" },
       ],
       claimed: false,
+      status: "PAID",
       registeredAt: "2024-08-14T10:00:00.000Z",
     },
   ],
@@ -116,6 +150,8 @@ const seedDB: DBShape = {
   ],
   telegram: { enabled: false, botToken: "", channelId: "", announcements: [] },
   payments: [],
+  withdrawals: [],
+  rooms: [],
   payment: {
     upiId: "ksuraj138@ybl",
     whatsappNumber: "917015742792",
@@ -154,10 +190,12 @@ export function readDB(): DBShape {
       ...r,
       members: Array.isArray(r.members) ? r.members : [],
       claimed: !!r.claimed,
+      status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
     }));
     merged.tournaments = (merged.tournaments || []).map((t) => ({
       ...t,
       tag: t.tag || undefined,
+      winner: t.winner || undefined,
     }));
     const knownIds = new Set(merged.tournaments.map((t) => t.id));
     for (const seedT of seedTournaments) {
@@ -168,6 +206,10 @@ export function readDB(): DBShape {
     }
     merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
     merged.otps = Array.isArray(merged.otps) ? merged.otps : [];
+    merged.withdrawals = Array.isArray(merged.withdrawals) ? merged.withdrawals : [];
+    merged.rooms = Array.isArray(merged.rooms) ? merged.rooms : [];
+    merged.notifications = Array.isArray(merged.notifications) ? merged.notifications : [];
+    merged.matches = Array.isArray(merged.matches) ? merged.matches : seedMatches;
     return merged;
   } catch {
     return defaultDB();

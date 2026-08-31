@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { matches, type MatchStatus } from "@/data/arena";
+import { getMatches } from "@/lib/store";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
+import type { Match, MatchStatus } from "@/data/arena";
 
 const tabs: { key: MatchStatus | "ALL"; label: string }[] = [
   { key: "ALL", label: "ALL" },
@@ -11,7 +13,7 @@ const tabs: { key: MatchStatus | "ALL"; label: string }[] = [
   { key: "COMPLETED", label: "RESULTS" },
 ];
 
-function MatchCard({ m }: { m: (typeof matches)[number] }) {
+function MatchCard({ m }: { m: Match }) {
   const isLive = m.status === "LIVE";
   const isDone = m.status === "COMPLETED";
   return (
@@ -42,16 +44,22 @@ function MatchCard({ m }: { m: (typeof matches)[number] }) {
       </div>
 
       <div className="mb-4 border border-[#1a2134] bg-[#0a0d16]/60">
-        {m.teams.map((t, i) => (
+        {(m.teams || []).map((t, i) => (
           <div key={t.tag} className={`flex items-center justify-between border-b border-[#1a2134] px-4 py-2.5 last:border-b-0 ${i === 0 && isLive ? "bg-red-500/5" : ""}`}>
             <span className="font-body text-sm font-semibold tracking-[0.1em] text-slate-200">{t.name}</span>
-            <span className="font-display text-base font-black text-white">{isDone || isLive ? t.points : "—"}</span>
+            <span className="flex items-center gap-3">
+              {typeof t.kills === "number" && (isDone || isLive) && (
+                <span className="font-body text-[10px] tracking-[0.15em] text-slate-500">{t.kills} KILLS</span>
+              )}
+              <span className="font-display text-base font-black text-white">{isDone || isLive ? t.points : "—"}</span>
+            </span>
           </div>
         ))}
       </div>
 
       <div className="flex items-center justify-between">
         <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">MAP · {m.map} · {m.mode}</span>
+        {isLive && m.roomId && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">ROOM <span className="text-slate-300">{m.roomId}</span></span>}
         {isLive && <a href="#live" className="font-display text-[10px] font-bold tracking-[0.2em] text-red-400">WATCH LIVE →</a>}
         {isDone && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">RESULTS PUBLISHED</span>}
         {!isLive && !isDone && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">ROOM TBD</span>}
@@ -62,6 +70,9 @@ function MatchCard({ m }: { m: (typeof matches)[number] }) {
 
 export default function MatchesPage() {
   const [tab, setTab] = useState<MatchStatus | "ALL">("ALL");
+  const refresh = useStoreRefresh();
+  void refresh;
+  const matches = getMatches();
   const filtered = tab === "ALL" ? matches : matches.filter((m) => m.status === tab);
 
   return (

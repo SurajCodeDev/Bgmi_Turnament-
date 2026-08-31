@@ -5,7 +5,7 @@ import {
   matches as seedMatches,
   defaultNotifications,
   type Tournament,
-  type Notification,
+  type Match,
 } from "@/data/arena";
 import {
   apiGetTournaments,
@@ -17,8 +17,13 @@ import {
   apiRegisterForTournament,
   apiUnregisterFromTournament,
   apiGetUsers,
+  apiGetMatches,
+  apiGetNotifications,
+  apiMarkNotificationRead,
+  apiMarkAllNotificationsRead,
   type ApiUser,
   type ApiRegistration,
+  type ApiNotification,
 } from "@/lib/api";
 
 export type { Tournament };
@@ -40,6 +45,8 @@ export interface LocalUser {
 let cachedTournaments: Tournament[] | null = null;
 let cachedRegistrations: ApiRegistration[] = [];
 let cachedUsers: ApiUser[] = [];
+let cachedMatches: Match[] | null = null;
+let cachedNotifications: ApiNotification[] | null = null;
 let hydrated = false;
 
 const listeners = new Set<() => void>();
@@ -80,6 +87,18 @@ export function hydrateStore() {
         cachedRegistrations = regs;
         cachedUsers = users;
         hydrated = true;
+        apiGetMatches()
+          .then((ms) => {
+            if (ms.length) cachedMatches = ms;
+            emit();
+          })
+          .catch(() => {});
+        apiGetNotifications()
+          .then((res) => {
+            cachedNotifications = res.notifications;
+            emit();
+          })
+          .catch(() => {});
       } catch {
         // keep seed fallback on failure
       } finally {
@@ -91,6 +110,7 @@ export function hydrateStore() {
 }
 
 export function refreshStore() {
+  hydratePromise = null;
   return hydrateStore();
 }
 
@@ -177,6 +197,9 @@ export async function registerForTournament(
     playerUid: string;
     playerEmail: string;
     members: { name: string; uid: string }[];
+    paymentMethod?: "wallet" | "upi";
+    upiTxnRef?: string;
+    note?: string;
   }
 ) {
   if (isRegistered(userId, tournamentId)) return { ok: false, error: "Already registered." };
@@ -184,7 +207,7 @@ export async function registerForTournament(
   if (res.ok) {
     cachedRegistrations = await apiGetRegistrations(userId);
     const t = getTournament(tournamentId);
-    if (t) {
+    if (t && !res.pending) {
       cachedTournaments = getTournaments().map((x) =>
         x.id === tournamentId ? { ...x, teamsJoined: Math.min(x.teams, x.teamsJoined + 1) } : x
       );
@@ -226,21 +249,37 @@ export function getPlayer(id: string) {
 
 export { seedMatches, defaultNotifications };
 
-// ---------- Notifications (static seed for now) ----------
+// ---------- Matches (server-backed with seed fallback) ----------
 
-export function getNotifications(): Notification[] {
-  return defaultNotifications;
+export function getMatches(): Match[] {
+  return cachedMatches ?? seedMatches;
+}
+
+export function refreshMatches() {
+  return apiGetMatches().then((ms) => {
+    if (ms.length) cachedMatches = ms;
+    emit();
+  });
+}
+
+// ---------- Notifications (server-backed with seed fallback) ----------
+
+export function getNotifications(): ApiNotification[] {
+  return cachedNotifications ?? defaultNotifications;
 }
 
 export function getUnreadCount(): number {
-  return defaultNotifications.filter((n) => !n.read).length;
+  return getNotifications().filter((n) => !n.read).length;
 }
 
-export function markNotificationRead(id: string) {
-  // no-op for server-backed iteration; seed stays static
-  void id;
+export async function markNotificationRead(id: string) {
+  cachedNotifications = cachedNotifications?.map((n) => (n.id === id ? { ...n, read: true } : n)) ?? null;
+  emit();
+  await apiMarkNotificationRead(id).catch(() => {});
 }
 
-export function markAllNotificationsRead() {
-  // no-op
+export async function markAllNotificationsRead() {
+  cachedNotifications = cachedNotifications?.map((n) => ({ ...n, read: true })) ?? null;
+  emit();
+  await apiMarkAllNotificationsRead().catch(() => {});
 }

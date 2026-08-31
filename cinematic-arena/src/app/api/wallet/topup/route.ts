@@ -23,17 +23,6 @@ export async function POST(req: Request) {
   }
 
   const txnRef = String(upiTxnRef || makeRef()).trim();
-  user.wallet += n;
-
-  db.transactions.push({
-    id: `tx-${Date.now()}`,
-    userId: user.id,
-    label: "Wallet Top-up (UPI)",
-    amount: n,
-    status: "CREDITED",
-    createdAt: new Date().toISOString(),
-  });
-
   const payment = {
     id: `pay-${Date.now()}`,
     userId: user.id,
@@ -42,8 +31,9 @@ export async function POST(req: Request) {
     upiId: db.payment.upiId,
     upiTxnRef: txnRef,
     note: String(note || "").trim(),
-    status: "VERIFIED",
+    status: "PENDING VERIFICATION",
     createdAt: new Date().toISOString(),
+    type: "TOPUP" as const,
   };
   db.payments.push(payment);
   writeDB(db);

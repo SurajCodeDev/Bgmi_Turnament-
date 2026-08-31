@@ -1,4 +1,4 @@
-import type { Tournament } from "@/data/arena";
+import type { Tournament, Match } from "@/data/arena";
 import type { User } from "@/lib/store";
 
 export interface ApiUser {
@@ -19,6 +19,8 @@ export interface ApiRegistrationMember {
   uid: string;
 }
 
+export type ApiRegistrationStatus = "PAID" | "PENDING" | "WALLET" | "FREE";
+
 export interface ApiRegistration {
   userId: string;
   tournamentId: string;
@@ -29,6 +31,8 @@ export interface ApiRegistration {
   teamName: string;
   members: ApiRegistrationMember[];
   claimed: boolean;
+  status: ApiRegistrationStatus;
+  paymentId?: string;
   registeredAt: string;
 }
 
@@ -128,12 +132,24 @@ export async function apiGetRegistrations(userId?: string): Promise<ApiRegistrat
 export async function apiRegisterForTournament(
   userId: string,
   tournamentId: string,
-  details: { teamName: string; playerName: string; playerUid: string; playerEmail: string; members: ApiRegistrationMember[] }
+  details: {
+    teamName: string;
+    playerName: string;
+    playerUid: string;
+    playerEmail: string;
+    members: ApiRegistrationMember[];
+    paymentMethod?: "wallet" | "upi";
+    upiTxnRef?: string;
+    note?: string;
+  }
 ) {
-  return json<{ ok: boolean; error?: string; wallet?: number }>("/api/registrations", {
-    method: "POST",
-    body: JSON.stringify({ userId, tournamentId, ...details }),
-  });
+  return json<{ ok: boolean; error?: string; wallet?: number; pending?: boolean; payment?: PaymentProof }>(
+    "/api/registrations",
+    {
+      method: "POST",
+      body: JSON.stringify({ userId, tournamentId, ...details }),
+    }
+  );
 }
 
 export async function apiUnregisterFromTournament(userId: string, tournamentId: string) {
@@ -155,6 +171,40 @@ export interface PaymentProof {
   note: string;
   status: string;
   createdAt: string;
+  type?: "TOPUP" | "ENTRY";
+  tournamentId?: string;
+  tournamentName?: string;
+  verifyRemarks?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
+
+export interface Withdrawal {
+  id: string;
+  userId: string;
+  userName: string;
+  upiId: string;
+  amount: number;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  createdAt: string;
+  processedAt?: string;
+  remarks?: string;
+}
+
+export interface ApiNotification {
+  id: string;
+  type: "MATCH" | "RESULT" | "PAYMENT" | "ANNOUNCEMENT" | "DISPUTE";
+  message: string;
+  date: string;
+  read: boolean;
+  userId?: string;
+}
+
+export interface ApiRoom {
+  tournamentId: string;
+  roomId: string;
+  password: string;
+  updatedAt: string;
 }
 
 export interface PaymentConfig {
@@ -176,9 +226,20 @@ export async function apiTopUp(amount: number, upiTxnRef?: string, note?: string
 }
 
 export async function apiWithdraw(amount: number) {
-  return json<{ ok: boolean; balance: number; error?: string }>("/api/wallet/withdraw", {
+  return json<{ ok: boolean; balance: number; error?: string }>("/api/withdrawals", {
     method: "POST",
     body: JSON.stringify({ amount }),
+  });
+}
+
+export async function apiGetWithdrawals(): Promise<{ ok: boolean; withdrawals: Withdrawal[] }> {
+  return json<{ ok: boolean; withdrawals: Withdrawal[] }>("/api/withdrawals");
+}
+
+export async function apiProcessWithdrawal(id: string, action: "approve" | "reject", opts?: { upiId?: string; remarks?: string }) {
+  return json<{ ok: boolean; error?: string }>("/api/withdrawals", {
+    method: "PUT",
+    body: JSON.stringify({ id, action, ...opts }),
   });
 }
 
@@ -188,6 +249,68 @@ export async function apiGetPaymentConfig(): Promise<PaymentConfig> {
 
 export async function apiGetPayments(): Promise<{ ok: boolean; payments: PaymentProof[] }> {
   return json<{ ok: boolean; payments: PaymentProof[] }>("/api/payments");
+}
+
+export async function apiProcessPayment(id: string, action: "verify" | "reject", remarks?: string) {
+  return json<{ ok: boolean; error?: string }>(`/api/payments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ action, remarks }),
+  });
+}
+
+// ---- Matches ----
+
+export async function apiGetMatches(): Promise<Match[]> {
+  const data = await json<{ ok: boolean; matches: Match[] }>("/api/matches");
+  return data.matches;
+}
+
+export async function apiAddMatch(m: Partial<Match>) {
+  return json<{ ok: boolean; error?: string }>("/api/matches", { method: "POST", body: JSON.stringify(m) });
+}
+
+export async function apiSaveMatch(m: Match) {
+  return json<{ ok: boolean; error?: string }>("/api/matches", { method: "PUT", body: JSON.stringify(m) });
+}
+
+export async function apiDeleteMatch(id: string) {
+  return json<{ ok: boolean }>("/api/matches", { method: "DELETE", body: JSON.stringify({ id }) });
+}
+
+// ---- Notifications ----
+
+export async function apiGetNotifications(): Promise<{ ok: boolean; notifications: ApiNotification[] }> {
+  return json<{ ok: boolean; notifications: ApiNotification[] }>("/api/notifications");
+}
+
+export async function apiMarkNotificationRead(id: string) {
+  return json<{ ok: boolean }>("/api/notifications", { method: "PUT", body: JSON.stringify({ id }) });
+}
+
+export async function apiMarkAllNotificationsRead() {
+  return json<{ ok: boolean }>("/api/notifications", { method: "POST" });
+}
+
+// ---- Rooms ----
+
+export async function apiGetRoom(tournamentId: string): Promise<{ ok: boolean; room: ApiRoom | null }> {
+  return json<{ ok: boolean; room: ApiRoom | null }>(`/api/rooms?tournamentId=${encodeURIComponent(tournamentId)}`);
+}
+
+export async function apiSetRoom(tournamentId: string, roomId: string, password: string) {
+  return json<{ ok: boolean; error?: string }>("/api/rooms", {
+    method: "PUT",
+    body: JSON.stringify({ tournamentId, roomId, password }),
+  });
+}
+
+// ---- Winner declare ----
+
+export async function apiDeclareWinner(tournamentId: string, winner: string) {
+  return json<{ ok: boolean; error?: string; creditedTo?: string | null; amount?: number }>("/api/prize/declare", {
+    method: "POST",
+    body: JSON.stringify({ tournamentId, winner }),
+  });
 }
 
 // ---- Prize ----
@@ -206,4 +329,4 @@ export async function apiGetUsers(): Promise<ApiUser[]> {
   return data.users;
 }
 
-export type { User };
+export type { User, Match };

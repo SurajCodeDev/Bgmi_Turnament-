@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { getTournament, getTournaments, isRegistered, registerForTournament, unregisterFromTournament } from "@/lib/store";
+import { QRCodeSVG } from "qrcode.react";
+import { getTournament, getTournaments, getRegistrations, isRegistered, registerForTournament, unregisterFromTournament } from "@/lib/store";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
-import { apiGetWallet, apiTopUp } from "@/lib/api";
+import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, type ApiRoom } from "@/lib/api";
 import { entryFeeNumber, isFreeTournament, isInviteOnly, prizeNumber, squadSizeFor, formatINR } from "@/lib/arena";
 
 const statusColor: Record<string, string> = {
@@ -23,10 +24,16 @@ export default function TournamentDetailPage() {
   const refresh = useStoreRefresh();
   const [t, setT] = useState(() => getTournament(id));
   const [registered, setRegistered] = useState(false);
+  const [regStatus, setRegStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [wallet, setWallet] = useState<number | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
+  const [payMethod, setPayMethod] = useState<"upi" | "wallet">("wallet");
+  const [upiTxnRef, setUpiTxnRef] = useState("");
+  const [upiNote, setUpiNote] = useState("");
+  const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string; payeeName: string } | null>(null);
+  const [room, setRoom] = useState<ApiRoom | null>(null);
   const [form, setForm] = useState({
     playerName: user?.name ?? "",
     playerUid: user?.uid ?? "",
@@ -52,6 +59,29 @@ export default function TournamentDetailPage() {
       });
     }
   }, [user, id]);
+
+  useEffect(() => {
+    if (user) {
+      const reg = getRegistrations().find((r) => r.userId === user.id && r.tournamentId === id);
+      setRegStatus(reg?.status ?? null);
+      if (reg) {
+        apiGetRoom(id)
+          .then((res) => {
+            if (res.ok) setRoom(res.room);
+          })
+          .catch(() => {});
+      }
+    } else {
+      setRegStatus(null);
+      setRoom(null);
+    }
+  }, [user, id, refresh, registered]);
+
+  useEffect(() => {
+    apiGetPaymentConfig()
+      .then(setPayConfig)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -88,6 +118,9 @@ export default function TournamentDetailPage() {
     );
   }
 
+  const fee = entryFeeNumber(t);
+  const upiIntent = `upi://pay?pa=${payConfig?.upiId || "ksuraj138@ybl"}&pn=${encodeURIComponent(payConfig?.payeeName || "NEXT LEVEL ARENA")}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Entry ${t.short}`)}`;
+
   const handleRegister = async () => {
     if (!user) {
       window.location.href = "/login";
@@ -112,13 +145,26 @@ export default function TournamentDetailPage() {
       alert("Fill in complete details for every teammate.");
       return;
     }
+    if (!isFreeTournament(t) && payMethod === "upi") {
+      if (!upiTxnRef.trim()) {
+        alert("Enter your UPI transaction reference after paying.");
+        return;
+      }
+    }
     setBusy(true);
-    const res = await registerForTournament(user.id, t.id, { ...form, members: filledMembers });
+    const res = await registerForTournament(user.id, t.id, {
+      ...form,
+      members: filledMembers,
+      paymentMethod: isFreeTournament(t) ? "wallet" : payMethod,
+      upiTxnRef: payMethod === "upi" ? upiTxnRef : undefined,
+      note: payMethod === "upi" ? upiNote : undefined,
+    });
     setBusy(false);
     if (res.ok) {
       setRegistered(true);
+      setRegStatus(res.pending ? "PENDING" : null);
       setT(getTournament(t.id));
-      setWallet(typeof res.wallet === "number" ? res.wallet : wallet);
+      if (typeof res.wallet === "number") setWallet(res.wallet);
     } else {
       alert(res.error || "Registration failed.");
     }
@@ -132,10 +178,9 @@ export default function TournamentDetailPage() {
     }
     const res = await apiTopUp(n);
     if (res.ok) {
-      setWallet(res.balance);
       setTopupOpen(false);
       setTopupAmount("");
-      alert(`Funds added! New balance: ${formatINR(res.balance)}`);
+      alert(`Top-up of ${formatINR(n)} submitted for verification. Admin will credit your wallet shortly.`);
     } else {
       alert(res.error || "Top-up failed.");
     }
@@ -147,6 +192,8 @@ export default function TournamentDetailPage() {
     await unregisterFromTournament(user.id, t.id);
     setBusy(false);
     setRegistered(false);
+    setRegStatus(null);
+    setRoom(null);
     setT(getTournament(t.id));
   };
 
@@ -168,6 +215,11 @@ export default function TournamentDetailPage() {
               </div>
               <h1 className="font-display text-3xl font-black tracking-wide text-white text-glow sm:text-5xl">{t.short}</h1>
               <p className="mt-2 font-body text-sm tracking-[0.2em] text-slate-400">{t.name}</p>
+              {t.winner && (
+                <p className="mt-3 inline-block rounded-sm border border-cyan-400/50 bg-cyan-400/10 px-3 py-1 font-body text-[10px] font-semibold tracking-[0.2em] text-cyan-400">
+                  CHAMPIONS: {t.winner}
+                </p>
+              )}
             </motion.div>
           </div>
         </div>
@@ -288,11 +340,43 @@ export default function TournamentDetailPage() {
               )}
             </div>
 
+            {room && t.status === "LIVE" && (
+              <div className="mb-5 border border-emerald-500/40 bg-emerald-500/5 p-4">
+                <p className="mb-2 font-body text-[9px] font-semibold tracking-[0.25em] text-emerald-400">LIVE ROOM ACCESS</p>
+                <div className="space-y-1 font-body text-xs text-slate-300">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">ROOM ID</span>
+                    <span className="font-display font-black tracking-[0.2em] text-white">{room.roomId || "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">PASSWORD</span>
+                    <span className="font-display font-black tracking-[0.2em] text-emerald-400">{room.password || "—"}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {registered ? (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-center gap-2 border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 font-body text-xs font-semibold tracking-[0.2em] text-cyan-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> REGISTERED
-                </div>
+                {regStatus === "PENDING" ? (
+                  <div className="flex items-center justify-center gap-2 border border-amber-400/40 bg-amber-400/10 px-4 py-3 font-body text-xs font-semibold tracking-[0.2em] text-amber-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" /> PAYMENT UNDER VERIFICATION
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2 border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 font-body text-xs font-semibold tracking-[0.2em] text-cyan-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" /> REGISTERED
+                  </div>
+                )}
+                {t.status === "COMPLETED" && t.winner && (
+                  <div className="flex items-center justify-center gap-2 border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 font-body text-xs font-semibold tracking-[0.2em] text-cyan-400">
+                    WINNER: {t.winner}
+                  </div>
+                )}
+                {regStatus === "PENDING" && (
+                  <p className="font-body text-[10px] leading-relaxed tracking-[0.1em] text-slate-500">
+                    Aapka entry payment verification mein hai. Admin verify karte hi aapko tournament mein add kar diya jayega. WhatsApp par proof bhejna na bhoolen.
+                  </p>
+                )}
                 <button onClick={handleUnregister} disabled={busy} className="btn-ghost w-full px-4 py-3 font-display text-[11px]">
                   {busy ? "PROCESSING..." : "CANCEL REGISTRATION"}
                 </button>
@@ -364,20 +448,73 @@ export default function TournamentDetailPage() {
                 {!isFreeTournament(t) && (
                   <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
                     <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">STEP 3 · ENTRY FEE</p>
-                    <div className="flex items-center justify-between font-body text-xs text-slate-400">
-                      <span>ENTRY FEE</span>
-                      <span className="font-bold text-slate-200">{formatINR(entryFeeNumber(t))}</span>
-                    </div>
-                    <div className="flex items-center justify-between font-body text-xs text-slate-400">
-                      <span>WALLET BALANCE</span>
-                      <span className={`font-bold ${wallet !== null && wallet >= entryFeeNumber(t) ? "text-emerald-400" : "text-red-400"}`}>
-                        {wallet !== null ? formatINR(wallet) : "—"}
-                      </span>
-                    </div>
-                    {wallet !== null && wallet < entryFeeNumber(t) && (
-                      <button onClick={() => setTopupOpen(true)} className="btn-primary w-full px-4 py-2.5 font-display text-[11px]">
-                        + ADD FUNDS TO WALLET
+                    <div className="mb-1 grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => setPayMethod("upi")}
+                        className={`border px-3 py-2 font-body text-[10px] font-semibold tracking-[0.15em] transition-colors ${
+                          payMethod === "upi" ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-400" : "border-[#1a2134] text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        UPI / QR
                       </button>
+                      <button
+                        onClick={() => setPayMethod("wallet")}
+                        className={`border px-3 py-2 font-body text-[10px] font-semibold tracking-[0.15em] transition-colors ${
+                          payMethod === "wallet" ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-400" : "border-[#1a2134] text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        WALLET
+                      </button>
+                    </div>
+
+                    {payMethod === "upi" ? (
+                      <div className="flex flex-col items-center gap-3 border border-[#1a2134] bg-[#0a0d16]/50 p-4">
+                        <QRCodeSVG value={upiIntent} size={150} bgColor="#05060a" fgColor="#22d3ee" level="M" />
+                        <div className="text-center">
+                          <p className="font-body text-[8px] font-semibold tracking-[0.25em] text-slate-500">PAY TO THIS UPI ID</p>
+                          <p className="break-all font-display text-xs font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
+                          <p className="mt-1 font-body text-[8px] tracking-[0.2em] text-slate-500">PAYEE: {payConfig?.payeeName || "NEXT LEVEL ARENA"} · AMOUNT: {formatINR(fee)}</p>
+                        </div>
+                        <a
+                          href={upiIntent}
+                          className="btn-primary w-full px-4 py-2.5 text-center font-display text-[10px]"
+                        >
+                          OPEN UPI APP TO PAY
+                        </a>
+                        <input
+                          value={upiTxnRef}
+                          onChange={(e) => setUpiTxnRef(e.target.value)}
+                          placeholder="UPI Transaction Ref"
+                          className="w-full border border-[#1a2134] bg-[#05060a] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                        />
+                        <input
+                          value={upiNote}
+                          onChange={(e) => setUpiNote(e.target.value)}
+                          placeholder="Payment note (optional)"
+                          className="w-full border border-[#1a2134] bg-[#05060a] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
+                        />
+                        <p className="font-body text-[9px] leading-relaxed tracking-[0.1em] text-slate-500">
+                          UPI se payment karo, txn ref daalo aur SUBMIT karo. Admin verify karke aapko tournament mein add karega.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                          <span>ENTRY FEE</span>
+                          <span className="font-bold text-slate-200">{formatINR(fee)}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                          <span>WALLET BALANCE</span>
+                          <span className={`font-bold ${wallet !== null && wallet >= fee ? "text-emerald-400" : "text-red-400"}`}>
+                            {wallet !== null ? formatINR(wallet) : "—"}
+                          </span>
+                        </div>
+                        {wallet !== null && wallet < fee && (
+                          <button onClick={() => setTopupOpen(true)} className="btn-primary w-full px-4 py-2.5 font-display text-[11px]">
+                            + ADD FUNDS TO WALLET
+                          </button>
+                        )}
+                      </div>
                     )}
                     {isInviteOnly(t) && (
                       <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">INVITE-ONLY EVENT · SPONSORED SLOTS</p>
@@ -398,7 +535,9 @@ export default function TournamentDetailPage() {
                     ? "TOURNAMENT OVER"
                     : isFreeTournament(t)
                     ? "CONFIRM FREE ENTRY"
-                    : wallet !== null && wallet < entryFeeNumber(t)
+                    : payMethod === "upi"
+                    ? "I HAVE PAID VIA UPI — SUBMIT"
+                    : wallet !== null && wallet < fee
                     ? "ADD FUNDS TO REGISTER"
                     : "PAY & REGISTER"}
                 </button>
@@ -421,7 +560,7 @@ export default function TournamentDetailPage() {
 
             {topupOpen && (
               <div className="mt-4 border border-cyan-400/40 bg-[#05060a] p-4">
-                <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">ADD FUNDS (MOCK UPI)</p>
+                <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">ADD FUNDS VIA UPI</p>
                 <div className="flex gap-2">
                   <input
                     type="number"

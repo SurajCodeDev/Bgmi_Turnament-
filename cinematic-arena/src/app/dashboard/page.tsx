@@ -9,10 +9,12 @@ import {
   getPlayers,
   getTeams,
   getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
   type Registration,
 } from "@/lib/store";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
-import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, type ApiTransaction, type PaymentConfig, type PaymentProof } from "@/lib/api";
+import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, apiGetPayments, apiGetWithdrawals, type ApiTransaction, type PaymentConfig, type PaymentProof, type Withdrawal } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
 
 export default function DashboardPage() {
@@ -32,6 +34,8 @@ export default function DashboardPage() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [payConfig, setPayConfig] = useState<PaymentConfig | null>(null);
   const [lastPayment, setLastPayment] = useState<PaymentProof | null>(null);
+  const [payments, setPayments] = useState<PaymentProof[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
 
   useEffect(() => {
     apiGetPaymentConfig()
@@ -41,6 +45,22 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) setRegistrations(getRegistrationsForUser(user.id));
+    setNotifications(getNotifications());
+  }, [user, refresh]);
+
+  useEffect(() => {
+    if (user) {
+      apiGetPayments()
+        .then((res) => {
+          if (res.ok) setPayments(res.payments.filter((p) => p.userId === user.id));
+        })
+        .catch(() => {});
+      apiGetWithdrawals()
+        .then((res) => {
+          if (res.ok) setWithdrawals(res.withdrawals.filter((w) => w.userId === user.id));
+        })
+        .catch(() => {});
+    }
   }, [user, refresh]);
 
   useEffect(() => {
@@ -91,7 +111,7 @@ export default function DashboardPage() {
       setTopupAmount("");
       setUpiTxnRef("");
       setPayNote("");
-      showToast("FUNDS ADDED SUCCESSFULLY");
+      showToast("PAYMENT SUBMITTED FOR VERIFICATION");
     } else {
       showToast(res.error || "TOP-UP FAILED");
     }
@@ -232,7 +252,10 @@ export default function DashboardPage() {
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">NOTIFICATIONS</h2>
               <button
-                onClick={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+                onClick={() => {
+                  setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                  markAllNotificationsRead();
+                }}
                 className="font-body text-[9px] tracking-[0.2em] text-slate-500 transition-colors hover:text-cyan-400"
               >
                 MARK ALL READ
@@ -242,9 +265,10 @@ export default function DashboardPage() {
               {notifications.map((n) => (
                 <button
                   key={n.id}
-                  onClick={() =>
-                    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
-                  }
+                  onClick={() => {
+                    setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+                    markNotificationRead(n.id);
+                  }}
                   className={`flex w-full items-start gap-3 border px-4 py-3 text-left transition-colors ${
                     n.read ? "border-[#1a2134] bg-[#0a0d16]/40" : "border-cyan-400/30 bg-[#0a0d16]/70"
                   }`}
@@ -257,6 +281,68 @@ export default function DashboardPage() {
                 </button>
               ))}
             </div>
+          </motion.div>
+        </div>
+
+        <div className="mb-10 grid gap-6 lg:grid-cols-2">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="holo-panel clip-corner p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENTS</h2>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">UPI STATUS</span>
+            </div>
+            {payments.length === 0 ? (
+              <p className="py-6 text-center font-body text-xs text-slate-600">NO PAYMENTS YET</p>
+            ) : (
+              <div className="space-y-2">
+                {payments.slice(0, 6).map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-3 border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
+                    <div className="min-w-0">
+                      <p className="font-body text-xs text-slate-300">{p.type === "ENTRY" ? (p.tournamentName || "Entry") : "Wallet Top-up"}</p>
+                      <p className="font-body text-[9px] tracking-[0.15em] text-slate-600">{p.upiTxnRef}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-display text-xs font-black text-cyan-400">{formatINR(p.amount)}</span>
+                      <span className={`rounded-sm border px-2 py-0.5 font-body text-[8px] font-semibold tracking-[0.15em] ${
+                        p.status === "VERIFIED" ? "border-emerald-500/40 text-emerald-400" : p.status === "REJECTED" ? "border-red-500/40 text-red-400" : "border-amber-400/40 text-amber-400"
+                      }`}>
+                        {p.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="holo-panel clip-corner p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">WITHDRAWALS</h2>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">TRACKING</span>
+            </div>
+            {withdrawals.length === 0 ? (
+              <p className="py-6 text-center font-body text-xs text-slate-600">NO WITHDRAWALS YET</p>
+            ) : (
+              <div className="space-y-2">
+                {withdrawals.slice(0, 6).map((w) => (
+                  <div key={w.id} className="flex items-center justify-between gap-3 border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
+                    <div className="min-w-0">
+                      <p className="font-body text-xs text-slate-300">Withdrawal Request</p>
+                      <p className="font-body text-[9px] tracking-[0.15em] text-slate-600">
+                        {new Date(w.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-display text-xs font-black text-cyan-400">{formatINR(w.amount)}</span>
+                      <span className={`rounded-sm border px-2 py-0.5 font-body text-[8px] font-semibold tracking-[0.15em] ${
+                        w.status === "APPROVED" ? "border-emerald-500/40 text-emerald-400" : w.status === "REJECTED" ? "border-red-500/40 text-red-400" : "border-amber-400/40 text-amber-400"
+                      }`}>
+                        {w.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -303,7 +389,7 @@ export default function DashboardPage() {
                       {t.status === "COMPLETED" && (
                         <button
                           onClick={() => handleClaim(t.id)}
-                          disabled={claiming === t.id || r.claimed}
+                          disabled={claiming === t.id || r.claimed || (!!t.winner && t.winner.toLowerCase() !== r.teamName.toLowerCase() && t.winner.toLowerCase() !== r.playerName.toLowerCase())}
                           className={`mt-3 w-full px-4 py-2.5 font-display text-[10px] ${
                             r.claimed
                               ? "border border-emerald-500/40 bg-emerald-500/5 font-body text-emerald-400"
@@ -313,8 +399,12 @@ export default function DashboardPage() {
                           {claiming === t.id
                             ? "CREDITING..."
                             : r.claimed
-                            ? "PRIZE CLAIMED"
-                            : `CLAIM PRIZE — ${t.prizePool} SHARE`}
+                            ? "PRIZE CREDITED"
+                            : t.winner && t.winner.toLowerCase() !== r.teamName.toLowerCase() && t.winner.toLowerCase() !== r.playerName.toLowerCase()
+                            ? "RESULTS DECLARED"
+                            : t.winner
+                            ? `CLAIM WINNER PRIZE`
+                            : "AWAITING RESULTS"}
                         </button>
                       )}
                     </div>
@@ -460,9 +550,15 @@ export default function DashboardPage() {
               onClick={(e) => e.stopPropagation()}
               className="holo-panel scanline clip-corner w-full max-w-md p-6"
             >
-              <div className="mb-4 flex items-center gap-2 border border-emerald-500/40 bg-emerald-500/5 px-4 py-3">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <p className="font-body text-[10px] font-semibold tracking-[0.25em] text-emerald-400">PAYMENT RECEIVED · WALLET CREDITED</p>
+              <div className={`mb-4 flex items-center gap-2 border px-4 py-3 ${
+                lastPayment.status === "VERIFIED" ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-400/40 bg-amber-400/5"
+              }`}>
+                <span className={`h-2 w-2 rounded-full ${lastPayment.status === "VERIFIED" ? "bg-emerald-400" : "bg-amber-400"}`} />
+                <p className={`font-body text-[10px] font-semibold tracking-[0.25em] ${
+                  lastPayment.status === "VERIFIED" ? "text-emerald-400" : "text-amber-400"
+                }`}>
+                  {lastPayment.status === "VERIFIED" ? "PAYMENT RECEIVED · WALLET CREDITED" : "PAYMENT SUBMITTED · AWAITING VERIFICATION"}
+                </p>
               </div>
 
               <p className="mb-4 font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENT PROOF</p>
@@ -487,7 +583,7 @@ export default function DashboardPage() {
                 )}
                 <div className="flex justify-between">
                   <span className="text-slate-500">STATUS</span>
-                  <span className="font-semibold text-emerald-400">{lastPayment.status}</span>
+                  <span className={`font-semibold ${lastPayment.status === "VERIFIED" ? "text-emerald-400" : "text-amber-400"}`}>{lastPayment.status}</span>
                 </div>
               </div>
 

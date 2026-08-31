@@ -1,6 +1,8 @@
 "use client";
 
 import { leaderboard } from "@/data/arena";
+import { getMatches } from "@/lib/store";
+import { useStoreRefresh } from "@/lib/useStoreRefresh";
 
 const rankStyle = (i: number) => {
   if (i === 0) return "text-cyan-400 border-cyan-400/40 shadow-glow bg-cyan-400/5";
@@ -9,7 +11,31 @@ const rankStyle = (i: number) => {
   return "text-slate-500 border-[#1a2134]";
 };
 
+function computeLeaderboard() {
+  const matches = getMatches();
+  const scored = matches.filter((m) => m.status === "COMPLETED" || m.status === "LIVE");
+  if (!scored.length || !scored.some((m) => m.teams?.length)) return leaderboard;
+
+  const agg = new Map<string, { name: string; tag: string; points: number; kills: number; wins: number; matches: number }>();
+  for (const m of scored) {
+    const teams = m.teams || [];
+    if (!teams.length) continue;
+    const topPoints = Math.max(...teams.map((t) => t.points || 0));
+    for (const t of teams) {
+      const entry = agg.get(t.name) || { name: t.name, tag: t.tag, points: 0, kills: 0, wins: 0, matches: 0 };
+      entry.points += t.points || 0;
+      entry.kills += t.kills || 0;
+      entry.matches += 1;
+      if (m.status === "COMPLETED" && (t.points || 0) >= topPoints) entry.wins += 1;
+      agg.set(t.name, entry);
+    }
+  }
+  return [...agg.values()].sort((a, b) => b.points - a.points || b.kills - a.kills);
+}
+
 export function LeaderboardSection() {
+  useStoreRefresh();
+  const rows = computeLeaderboard();
   return (
     <section id="leaderboard" className="relative py-24">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#070a12] to-transparent" />
@@ -31,10 +57,10 @@ export function LeaderboardSection() {
           </div>
 
           <div className="space-y-2">
-            {leaderboard.map((t, i) => (
+            {rows.map((t, i) => (
               <a
-                key={t.id}
-                href={`/teams/${t.id}`}
+                key={t.name}
+                href="/#leaderboard"
                 data-cursor="VIEW"
                 className={`grid grid-cols-[40px_1fr_60px_60px_80px] items-center gap-2 border bg-[#0a0d16]/70 px-4 py-4 transition-colors hover:border-cyan-400/40 sm:grid-cols-[50px_1fr_90px_90px_120px] ${
                   i < 3 ? `border ${rankStyle(i)}` : "border-[#1a2134]"

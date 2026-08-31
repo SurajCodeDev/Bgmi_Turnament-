@@ -21,6 +21,11 @@ html {
   scroll-behavior: smooth;
 }
 
+section[id],
+[id^="section"] {
+  scroll-margin-top: 96px;
+}
+
 html,
 body {
   padding: 0;

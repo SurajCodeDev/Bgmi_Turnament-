@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { navLinks } from "@/data/arena";
 import { useAuth } from "@/context/AuthContext";
@@ -28,10 +28,17 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleSectionNav = (href: string) => {
+  const handleSectionNav = (href: string, e?: MouseEvent) => {
+    e?.preventDefault();
     setOpen(false);
-    if (href.startsWith("#") && window.location.pathname !== "/") {
+    if (!href.startsWith("#")) return;
+    if (window.location.pathname !== "/") {
       window.location.href = `/${href}`;
+      return;
+    }
+    const el = document.getElementById(href.slice(1));
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -59,7 +66,7 @@ export function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              onClick={() => handleSectionNav(link.href)}
+              onClick={(e) => handleSectionNav(link.href, e)}
               data-cursor={link.label}
               className={`relative font-body text-xs font-semibold tracking-[0.2em] transition-colors ${
                 active === link.href ? "text-cyan-400" : "text-slate-400 hover:text-white"
@@ -155,7 +162,7 @@ export function Navbar() {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={() => handleSectionNav(link.href)}
+                  onClick={(e) => handleSectionNav(link.href, e)}
                   className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300"
                 >
                   {link.label}

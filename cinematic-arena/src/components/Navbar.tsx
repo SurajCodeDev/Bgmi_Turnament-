@@ -28,6 +28,13 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const handleSectionNav = (href: string) => {
+    setOpen(false);
+    if (href.startsWith("#") && window.location.pathname !== "/") {
+      window.location.href = `/${href}`;
+    }
+  };
+
   return (
     <motion.header
       initial={{ y: -80, opacity: 0 }}
@@ -52,6 +59,7 @@ export function Navbar() {
             <a
               key={link.href}
               href={link.href}
+              onClick={() => handleSectionNav(link.href)}
               data-cursor={link.label}
               className={`relative font-body text-xs font-semibold tracking-[0.2em] transition-colors ${
                 active === link.href ? "text-cyan-400" : "text-slate-400 hover:text-white"
@@ -147,7 +155,7 @@ export function Navbar() {
                 <a
                   key={link.href}
                   href={link.href}
-                  onClick={() => setOpen(false)}
+                  onClick={() => handleSectionNav(link.href)}
                   className="py-2.5 font-body text-sm font-semibold tracking-[0.2em] text-slate-300"
                 >
                   {link.label}

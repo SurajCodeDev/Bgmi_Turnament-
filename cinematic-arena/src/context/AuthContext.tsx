@@ -21,13 +21,15 @@ interface RegisterResult {
   error?: string;
   pendingUserId?: string;
   mockOtp?: string | null;
+  delivery?: "email" | "mock";
+  sentTo?: string[];
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   login: (identifier: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  sendOtp: (identifier: string, purpose?: string) => Promise<{ ok: boolean; error?: string; mockOtp?: string | null; sentTo?: string }>;
+  sendOtp: (identifier: string, purpose?: string) => Promise<{ ok: boolean; error?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string }>;
   verifyOtp: (identifier: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
   register: (data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) => Promise<RegisterResult>;
   verifyRegistration: (pendingUserId: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
@@ -79,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) {
       return { ok: false, error: res.error || "Registration failed." };
     }
-    return { ok: true, pendingUserId: res.pendingUserId, mockOtp: res.mockOtp };
+    return { ok: true, pendingUserId: res.pendingUserId, mockOtp: res.mockOtp, delivery: res.delivery, sentTo: res.sentTo };
   }, []);
 
   const verifyRegistration = useCallback(async (pendingUserId: string, otp: string) => {

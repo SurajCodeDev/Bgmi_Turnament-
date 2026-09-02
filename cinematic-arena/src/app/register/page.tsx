@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [team, setTeam] = useState("");
   const [otp, setOtp] = useState("");
   const [mockOtp, setMockOtp] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
   const [pendingUserId, setPendingUserId] = useState<string | undefined>(undefined);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,6 +60,7 @@ export default function RegisterPage() {
     }
     setPendingUserId(res.pendingUserId);
     setMockOtp(res.mockOtp || null);
+    setEmailSent(res.delivery === "email");
     setStep(2);
   };
 
@@ -182,6 +184,15 @@ export default function RegisterPage() {
                 <div className="border border-emerald-500/40 bg-emerald-500/5 px-4 py-3 text-center">
                   <p className="font-body text-[9px] tracking-[0.25em] text-emerald-400">DEMO MODE — YOUR OTP</p>
                   <p className="mt-1 font-display text-2xl font-black tracking-[0.3em] text-emerald-400">{mockOtp}</p>
+                </div>
+              )}
+
+              {emailSent && (
+                <div className="border border-cyan-500/40 bg-cyan-500/5 px-4 py-3 text-center">
+                  <p className="font-body text-[9px] tracking-[0.25em] text-cyan-400">OTP SENT TO YOUR EMAIL</p>
+                  <p className="mt-1 font-body text-[10px] tracking-[0.15em] text-slate-300">
+                    CHECK INBOX FOR {email.trim().toUpperCase()}
+                  </p>
                 </div>
               )}
 

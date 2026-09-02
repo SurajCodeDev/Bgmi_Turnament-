@@ -70,14 +70,14 @@ export async function apiLoginWithIdentifier(identifier: string, password: strin
 }
 
 export async function apiRegister(data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) {
-  return json<{ ok: boolean; error?: string; pendingUserId?: string; mockOtp?: string | null }>("/api/auth/register", {
+  return json<{ ok: boolean; error?: string; pendingUserId?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string[] }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export async function apiSendOtp(identifier: string, purpose = "login") {
-  return json<{ ok: boolean; error?: string; mockOtp?: string | null; sentTo?: string }>("/api/auth/otp/send", {
+  return json<{ ok: boolean; error?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string }>("/api/auth/otp/send", {
     method: "POST",
     body: JSON.stringify({ identifier, purpose }),
   });

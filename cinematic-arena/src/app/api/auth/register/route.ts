@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { isValidEmail, isValidPhone, isValidUid, issueOtp, OTP_MOCK } from "@/lib/server/otp";
+import { emailDeliveryEnabled, emailReachable, sendOtpEmail } from "@/lib/server/email";
 
 export async function POST(req: Request) {
   const { name, email, phone, password, uid, team } = await req.json();
@@ -53,14 +54,21 @@ export async function POST(req: Request) {
 
   const otp = issueOtp(user.id, cleanEmail || cleanPhone, "register");
   const mockOtps: Record<string, string> = {};
-  if (cleanEmail) mockOtps.email = otp;
-  if (cleanPhone) mockOtps.phone = otp;
+
+  let deliveredEmail = false;
+  if (cleanEmail && emailDeliveryEnabled() && emailReachable(cleanEmail)) {
+    deliveredEmail = await sendOtpEmail(cleanEmail, user.name, otp);
+  }
+
+  if (cleanEmail && !deliveredEmail && OTP_MOCK) mockOtps.email = otp;
+  if (cleanPhone && !deliveredEmail && OTP_MOCK) mockOtps.phone = otp;
 
   return NextResponse.json({
     ok: true,
     pendingUserId: user.id,
     sentTo: [cleanEmail || "", cleanPhone || ""].filter(Boolean),
-    mockOtp: OTP_MOCK ? otp : null,
+    delivery: deliveredEmail ? "email" : "mock",
+    mockOtp: OTP_MOCK && !deliveredEmail ? otp : null,
     mockOtps,
   });
 }

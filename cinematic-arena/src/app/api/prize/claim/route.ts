@@ -6,7 +6,7 @@ import { prizeNumber } from "@/lib/arena";
 export async function POST(req: Request) {
   const { tournamentId } = await req.json();
 
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     status: "CREDITED",
     createdAt: new Date().toISOString(),
   });
-  writeDB(db);
+  await writeDB(db);
 
   return NextResponse.json({ ok: true, balance: user.wallet, amount: share });
 }

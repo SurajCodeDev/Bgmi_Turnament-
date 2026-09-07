@@ -3,7 +3,7 @@ import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   let notifications = db.notifications;
   if (user) {
@@ -17,19 +17,19 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   const { id } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
   const n = db.notifications.find((x) => x.id === id && (!x.userId || x.userId === user.id));
   if (n) n.read = true;
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true });
 }
 
 export async function POST() {
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -37,6 +37,6 @@ export async function POST() {
   for (const n of db.notifications) {
     if (!n.userId || n.userId === user.id) n.read = true;
   }
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true });
 }

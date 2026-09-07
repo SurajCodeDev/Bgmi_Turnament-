@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   if (!tournamentId) {
     return NextResponse.json({ ok: false, error: "tournamentId is required." }, { status: 400 });
   }
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
@@ -46,6 +46,6 @@ export async function PUT(req: Request) {
   } else {
     db.rooms.push(room);
   }
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true, room });
 }

@@ -3,7 +3,7 @@ import { readDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });

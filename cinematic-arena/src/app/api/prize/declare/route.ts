@@ -5,7 +5,7 @@ import { prizeNumber } from "@/lib/arena";
 
 export async function POST(req: Request) {
   const { tournamentId, winner } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
     read: false,
   });
 
-  writeDB(db);
+  await writeDB(db);
 
   return NextResponse.json({
     ok: true,

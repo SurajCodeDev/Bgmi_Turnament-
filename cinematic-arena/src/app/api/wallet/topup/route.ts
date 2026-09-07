@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid amount between ₹1 and ₹10,00,000." }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     type: "TOPUP" as const,
   };
   db.payments.push(payment);
-  writeDB(db);
+  await writeDB(db);
 
   return NextResponse.json({ ok: true, balance: user.wallet, payment });
 }

@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Email/Mobile and password required." }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const user = db.users.find(
     (u) => u.email.toLowerCase() === id || u.phone === id
   );

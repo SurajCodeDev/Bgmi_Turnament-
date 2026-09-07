@@ -3,13 +3,13 @@ import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
   return NextResponse.json({ ok: true, tournaments: db.tournaments });
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
@@ -34,13 +34,13 @@ export async function POST(req: Request) {
     ...body,
   };
   db.tournaments.push(t);
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true, tournament: t });
 }
 
 export async function PUT(req: Request) {
   const body = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
@@ -50,19 +50,19 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, error: "Tournament not found." }, { status: 404 });
   }
   db.tournaments[idx] = { ...db.tournaments[idx], ...body };
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true, tournament: db.tournaments[idx] });
 }
 
 export async function DELETE(req: Request) {
   const { id } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
   }
   db.tournaments = db.tournaments.filter((t) => t.id !== id);
   db.registrations = db.registrations.filter((r) => r.tournamentId !== id);
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true });
 }

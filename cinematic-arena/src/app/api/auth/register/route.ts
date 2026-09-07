@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid BGMI UID (9-10 digits)." }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const exists = db.users.find(
     (u) => (cleanEmail && u.email.toLowerCase() === cleanEmail) || (cleanPhone && u.phone === cleanPhone)
   );
@@ -50,9 +50,9 @@ export async function POST(req: Request) {
   };
 
   db.users.push(user);
-  writeDB(db);
+  await writeDB(db);
 
-  const otp = issueOtp(user.id, cleanEmail || cleanPhone, "register");
+  const otp = await issueOtp(user.id, cleanEmail || cleanPhone, "register");
   const mockOtps: Record<string, string> = {};
 
   let deliveredEmail = false;

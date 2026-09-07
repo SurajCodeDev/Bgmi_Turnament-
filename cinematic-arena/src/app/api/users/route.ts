@@ -3,7 +3,7 @@ import { readDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });

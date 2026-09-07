@@ -10,12 +10,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid email or 10-digit mobile number." }, { status: 400 });
   }
 
-  const { user } = findByIdentifier(id);
+  const { user } = await findByIdentifier(id);
   if (!user) {
     return NextResponse.json({ ok: false, error: "No account found with this email/mobile. Please register first." }, { status: 404 });
   }
 
-  const otp = issueOtp(user.id, id, purpose || "login");
+  const otp = await issueOtp(user.id, id, purpose || "login");
 
   const isEmail = isValidEmail(id);
   const canDeliver = isEmail && emailDeliveryEnabled() && emailReachable(id);

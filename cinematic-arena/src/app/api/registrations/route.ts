@@ -6,14 +6,14 @@ import { entryFeeNumber, isFreeTournament, isInviteOnly, squadSizeFor } from "@/
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
-  const db = readDB();
+  const db = await readDB();
   const regs = userId ? db.registrations.filter((r) => r.userId === userId) : db.registrations;
   return NextResponse.json({ ok: true, registrations: regs });
 }
 
 export async function POST(req: Request) {
   const { tournamentId, teamName, playerName, playerUid, playerEmail, members, paymentMethod, upiTxnRef, note } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
   if (isFreeTournament(t) || registration.status === "WALLET") {
     t.teamsJoined += 1;
   }
-  writeDB(db);
+  await writeDB(db);
 
   return NextResponse.json({
     ok: true,
@@ -134,7 +134,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const { tournamentId } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -154,6 +154,6 @@ export async function DELETE(req: Request) {
       db.payments = db.payments.filter((p) => p.id !== reg.paymentId);
     }
   }
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true });
 }

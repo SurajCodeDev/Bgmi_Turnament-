@@ -20,8 +20,8 @@ function randomOtp(): string {
   return crypto.randomInt(100000, 1000000).toString();
 }
 
-export function findByIdentifier(identifier: string) {
-  const db = readDB();
+export async function findByIdentifier(identifier: string) {
+  const db = await readDB();
   const id = String(identifier || "").trim().toLowerCase();
   const user = db.users.find(
     (u) => u.email.toLowerCase() === id || u.phone === id
@@ -29,8 +29,8 @@ export function findByIdentifier(identifier: string) {
   return { db, user };
 }
 
-export function issueOtp(userId: string, identifier: string, purpose: string) {
-  const db = readDB();
+export async function issueOtp(userId: string, identifier: string, purpose: string) {
+  const db = await readDB();
   const otp = randomOtp();
   db.otps.push({
     id: `otp-${Date.now()}`,
@@ -41,12 +41,12 @@ export function issueOtp(userId: string, identifier: string, purpose: string) {
     expiresAt: Date.now() + OTP_EXPIRY_MS,
     consumed: false,
   });
-  writeDB(db);
+  await writeDB(db);
   return otp;
 }
 
-export function verifyOtp(userId: string, identifier: string, otp: string, purpose: string): boolean {
-  const db = readDB();
+export async function verifyOtp(userId: string, identifier: string, otp: string, purpose: string): Promise<boolean> {
+  const db = await readDB();
   const now = Date.now();
   const record = db.otps.find(
     (o) =>
@@ -59,6 +59,6 @@ export function verifyOtp(userId: string, identifier: string, otp: string, purpo
   );
   if (!record) return false;
   record.consumed = true;
-  writeDB(db);
+  await writeDB(db);
   return true;
 }

@@ -13,19 +13,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter the 6-digit OTP." }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
 
   if (mode === "register" && userId) {
     const user = db.users.find((u) => u.id === userId);
     if (!user) return NextResponse.json({ ok: false, error: "User not found." }, { status: 404 });
 
     const identifiers = [user.email, user.phone].filter(Boolean);
-    const ok = identifiers.some((i) => verifyOtp(user.id, i, otpCode, "register"));
+    const ok = await Promise.all(identifiers.map((i) => verifyOtp(user.id, i, otpCode, "register"))).then((rs) => rs.some(Boolean));
     if (!ok) return NextResponse.json({ ok: false, error: OTP_MOCK ? "Invalid OTP." : "Invalid or expired OTP." }, { status: 400 });
 
     if (user.email) user.emailVerified = true;
     if (user.phone) user.phoneVerified = true;
-    writeDB(db);
+    await writeDB(db);
     await createSession(user);
     return NextResponse.json({ ok: true, user: safeUser(user) });
   }
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const { user } = { user: db.users.find((u) => u.email.toLowerCase() === id || u.phone === id) };
   if (!user) return NextResponse.json({ ok: false, error: "No account found." }, { status: 404 });
 
-  const ok = verifyOtp(user.id, id, otpCode, "login");
+  const ok = await verifyOtp(user.id, id, otpCode, "login");
   if (!ok) return NextResponse.json({ ok: false, error: OTP_MOCK ? "Invalid OTP." : "Invalid or expired OTP." }, { status: 400 });
 
   await createSession(user);

@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { list as blobList, get as blobGet, put as blobPut } from "@vercel/blob";
 import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, matches as seedMatches, defaultNotifications, type Tournament, type Notification } from "@/data/arena";
 
 export interface ServerUser {
@@ -113,6 +114,8 @@ interface DBShape {
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
+const BLOB_KEY = "nla-db/db.json";
+const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 const seedUsers: ServerUser[] = [
   { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", phone: "7000000001", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
@@ -164,72 +167,110 @@ function defaultDB(): DBShape {
   return JSON.parse(JSON.stringify(seedDB));
 }
 
-export function readDB(): DBShape {
+function normalizeShape(parsed: unknown): DBShape {
+  const base = defaultDB();
+  const data = (parsed || {}) as Partial<DBShape>;
+  const merged: DBShape = {
+    ...base,
+    ...data,
+    telegram: { ...base.telegram, ...(data.telegram || {}) },
+    payment: { ...base.payment, ...(data.payment || {}) },
+  };
+  merged.users = (merged.users || []).map((u) => ({
+    ...u,
+    wallet: typeof u.wallet === "number" ? u.wallet : 0,
+    phone: u.phone || "",
+    emailVerified: !!u.emailVerified,
+    phoneVerified: !!u.phoneVerified,
+  }));
+  merged.registrations = (merged.registrations || []).map((r) => ({
+    ...r,
+    members: Array.isArray(r.members) ? r.members : [],
+    claimed: !!r.claimed,
+    status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
+  }));
+  merged.tournaments = (merged.tournaments || []).map((t) => ({
+    ...t,
+    tag: t.tag || undefined,
+    winner: t.winner || undefined,
+  }));
+  const knownIds = new Set(merged.tournaments.map((t) => t.id));
+  for (const seedT of seedTournaments) {
+    if (!knownIds.has(seedT.id)) {
+      merged.tournaments.push(seedT);
+      knownIds.add(seedT.id);
+    }
+  }
+  merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
+  merged.otps = Array.isArray(merged.otps) ? merged.otps : [];
+  merged.withdrawals = Array.isArray(merged.withdrawals) ? merged.withdrawals : [];
+  merged.rooms = Array.isArray(merged.rooms) ? merged.rooms : [];
+  merged.notifications = Array.isArray(merged.notifications) ? merged.notifications : [];
+  merged.matches = Array.isArray(merged.matches) ? merged.matches : seedMatches;
+  merged.transactions = Array.isArray(merged.transactions) ? merged.transactions : [];
+  merged.disputes = Array.isArray(merged.disputes) ? merged.disputes : [];
+  return merged;
+}
+
+async function readBlobText(): Promise<string | null> {
   try {
-    if (!fs.existsSync(DB_PATH)) {
-      writeDB(defaultDB());
-      return defaultDB();
+    const { blobs } = await blobList({ prefix: BLOB_KEY, limit: 1 });
+    if (!blobs || blobs.length === 0) return null;
+    const res = await blobGet(blobs[0].url, { access: "public", useCache: false });
+    if (!res || !res.stream) return null;
+    return await new Response(res.stream).text();
+  } catch {
+    return null;
+  }
+}
+
+async function writeBlobText(text: string) {
+  await blobPut(BLOB_KEY, text, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType: "application/json",
+  });
+}
+
+export async function readDB(): Promise<DBShape> {
+  try {
+    let raw: string | null = null;
+    if (USE_BLOB) {
+      raw = await readBlobText();
+    } else if (fs.existsSync(DB_PATH)) {
+      raw = fs.readFileSync(DB_PATH, "utf-8");
     }
-    const raw = fs.readFileSync(DB_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as DBShape;
-    const base = defaultDB();
-    const merged: DBShape = {
-      ...base,
-      ...parsed,
-      telegram: { ...base.telegram, ...(parsed.telegram || {}) },
-      payment: { ...base.payment, ...(parsed.payment || {}) },
-    };
-    merged.users = (merged.users || []).map((u) => ({
-      ...u,
-      wallet: typeof u.wallet === "number" ? u.wallet : 0,
-      phone: u.phone || "",
-      emailVerified: !!u.emailVerified,
-      phoneVerified: !!u.phoneVerified,
-    }));
-    merged.registrations = (merged.registrations || []).map((r) => ({
-      ...r,
-      members: Array.isArray(r.members) ? r.members : [],
-      claimed: !!r.claimed,
-      status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
-    }));
-    merged.tournaments = (merged.tournaments || []).map((t) => ({
-      ...t,
-      tag: t.tag || undefined,
-      winner: t.winner || undefined,
-    }));
-    const knownIds = new Set(merged.tournaments.map((t) => t.id));
-    for (const seedT of seedTournaments) {
-      if (!knownIds.has(seedT.id)) {
-        merged.tournaments.push(seedT);
-        knownIds.add(seedT.id);
-      }
+    if (raw) {
+      return normalizeShape(JSON.parse(raw) as unknown);
     }
-    merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
-    merged.otps = Array.isArray(merged.otps) ? merged.otps : [];
-    merged.withdrawals = Array.isArray(merged.withdrawals) ? merged.withdrawals : [];
-    merged.rooms = Array.isArray(merged.rooms) ? merged.rooms : [];
-    merged.notifications = Array.isArray(merged.notifications) ? merged.notifications : [];
-    merged.matches = Array.isArray(merged.matches) ? merged.matches : seedMatches;
-    return merged;
+    const fresh = defaultDB();
+    await writeDB(fresh);
+    return fresh;
   } catch {
     return defaultDB();
   }
 }
 
-export function writeDB(db: DBShape) {
+export async function writeDB(db: DBShape) {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const text = JSON.stringify(db);
+    if (USE_BLOB) {
+      await writeBlobText(text);
+    } else {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(DB_PATH, text, "utf-8");
     }
-    fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
   } catch {
     // ignore write errors
   }
 }
 
-export function resetDB() {
-  writeDB(defaultDB());
-  return readDB();
+export async function resetDB() {
+  const fresh = defaultDB();
+  await writeDB(fresh);
+  return fresh;
 }
 
 // Session helpers (token = userId, kept in an httpOnly cookie handled by routes)

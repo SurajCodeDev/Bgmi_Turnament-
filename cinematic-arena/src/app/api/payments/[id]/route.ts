@@ -5,7 +5,7 @@ import { getSessionUser } from "@/lib/server/auth";
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { action, remarks } = await req.json();
-  const db = readDB();
+  const db = await readDB();
   const admin = await getSessionUser(db);
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
@@ -87,6 +87,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ ok: false, error: "Invalid action." }, { status: 400 });
   }
 
-  writeDB(db);
+  await writeDB(db);
   return NextResponse.json({ ok: true, payment: pay });
 }

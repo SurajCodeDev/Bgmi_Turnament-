@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@vercel/blob": "^2.8.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.14.0",
     "gsap": "^3.13.0",

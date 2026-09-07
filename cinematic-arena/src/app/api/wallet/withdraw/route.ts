@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Enter a valid amount." }, { status: 400 });
   }
 
-  const db = readDB();
+  const db = await readDB();
   const user = await getSessionUser(db);
   if (!user) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     status: "PENDING",
     createdAt: new Date().toISOString(),
   });
-  writeDB(db);
+  await writeDB(db);
 
   return NextResponse.json({ ok: true, balance: user.wallet });
 }

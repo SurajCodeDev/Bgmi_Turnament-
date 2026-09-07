@@ -78,15 +78,19 @@ export function hydrateStore() {
   if (!hydratePromise) {
     hydratePromise = (async () => {
       try {
-        const [tours, regs, users] = await Promise.all([
+        const [tours, regs] = await Promise.all([
           apiGetTournaments(),
           apiGetRegistrations(),
-          apiGetUsers(),
         ]);
         if (tours.length) cachedTournaments = tours;
         cachedRegistrations = regs;
-        cachedUsers = users;
         hydrated = true;
+        apiGetUsers()
+          .then((us) => {
+            cachedUsers = us;
+            emit();
+          })
+          .catch(() => {});
         apiGetMatches()
           .then((ms) => {
             if (ms.length) cachedMatches = ms;

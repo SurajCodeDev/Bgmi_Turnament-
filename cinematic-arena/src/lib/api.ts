@@ -325,7 +325,10 @@ export async function apiClaimPrize(tournamentId: string) {
 // ---- Users ----
 
 export async function apiGetUsers(): Promise<ApiUser[]> {
-  const data = await json<{ ok: boolean; users: ApiUser[] }>("/api/users");
+  const data = await json<{ ok: boolean; users?: ApiUser[]; error?: string }>("/api/users");
+  if (!data.ok || !Array.isArray(data.users)) {
+    throw new Error(data.error ?? "Failed to load users");
+  }
   return data.users;
 }
 

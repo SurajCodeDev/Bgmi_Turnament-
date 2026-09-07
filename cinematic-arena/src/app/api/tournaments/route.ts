@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
+import { getSessionUser } from "@/lib/server/auth";
 
 export async function GET() {
   const db = readDB();
@@ -9,6 +10,10 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = await req.json();
   const db = readDB();
+  const admin = await getSessionUser(db);
+  if (!admin || admin.role !== "admin") {
+    return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
+  }
   const t = {
     id: `t-${Date.now()}`,
     name: "New BGMI Tournament",
@@ -36,6 +41,10 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const body = await req.json();
   const db = readDB();
+  const admin = await getSessionUser(db);
+  if (!admin || admin.role !== "admin") {
+    return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
+  }
   const idx = db.tournaments.findIndex((t) => t.id === body.id);
   if (idx < 0) {
     return NextResponse.json({ ok: false, error: "Tournament not found." }, { status: 404 });
@@ -48,6 +57,10 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   const { id } = await req.json();
   const db = readDB();
+  const admin = await getSessionUser(db);
+  if (!admin || admin.role !== "admin") {
+    return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
+  }
   db.tournaments = db.tournaments.filter((t) => t.id !== id);
   db.registrations = db.registrations.filter((r) => r.tournamentId !== id);
   writeDB(db);

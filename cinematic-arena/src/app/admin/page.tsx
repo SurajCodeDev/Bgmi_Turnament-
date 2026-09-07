@@ -30,6 +30,7 @@ import {
   getUsers,
   getRegistrations,
   refreshStore,
+  refreshUsers,
   type Tournament,
 } from "@/lib/store";
 
@@ -80,6 +81,12 @@ export default function AdminPage() {
   }, [refresh]);
 
   useEffect(() => {
+    if (user?.role === "admin") {
+      refreshUsers().catch(() => {});
+    }
+  }, [user?.id, user?.role]);
+
+  useEffect(() => {
     apiGetPayments()
       .then((res) => {
         if (res.ok) setPayments(res.payments);
@@ -122,6 +129,11 @@ export default function AdminPage() {
   const startEdit = (t: Tournament) => {
     setEditingId(t.id);
     setDraft({ ...t });
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById(`admin-edit-${t.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+    });
   };
 
   const saveEdit = async () => {
@@ -229,6 +241,15 @@ export default function AdminPage() {
     }
   };
 
+  const openMatchEditor = (m: Match) => {
+    setMatchDraft(m);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        document.getElementById("admin-match-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+    });
+  };
+
   const createMatch = async () => {
     const m: Match = {
       id: `M${String(Date.now()).slice(-4)}`,
@@ -298,7 +319,13 @@ export default function AdminPage() {
               </h1>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setShowCreate(true)} className="btn-primary px-5 py-2.5 font-display text-xs">
+              <button
+                onClick={() => {
+                  setShowCreate(true);
+                  requestAnimationFrame(() => setTimeout(() => document.getElementById("admin-create-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80));
+                }}
+                className="btn-primary px-5 py-2.5 font-display text-xs"
+              >
                 + NEW TOURNAMENT
               </button>
               <button onClick={handleReset} className="btn-ghost px-5 py-2.5 font-display text-xs">
@@ -350,7 +377,7 @@ export default function AdminPage() {
               {tournaments.map((t) => (
                 <motion.div
                   key={t.id}
-                  layout
+                  id={`admin-edit-${t.id}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
@@ -478,7 +505,7 @@ export default function AdminPage() {
             </AnimatePresence>
 
             {showCreate && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
+              <motion.div id="admin-create-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-display text-sm font-bold text-white">CREATE NEW TOURNAMENT</p>
@@ -701,7 +728,13 @@ export default function AdminPage() {
               <p className="font-body text-[11px] tracking-[0.2em] text-slate-400">
                 TOTAL MATCHES: <span className="font-bold text-cyan-400">{matches.length}</span>
               </p>
-              <button onClick={() => setShowMatchCreate(true)} className="btn-primary px-5 py-2.5 font-display text-[10px]">
+              <button
+                onClick={() => {
+                  setShowMatchCreate(true);
+                  requestAnimationFrame(() => setTimeout(() => document.getElementById("admin-match-create-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80));
+                }}
+                className="btn-primary px-5 py-2.5 font-display text-[10px]"
+              >
                 + NEW MATCH
               </button>
             </div>
@@ -744,7 +777,7 @@ export default function AdminPage() {
                     <span>ROOM <span className="text-slate-300">{m.roomId || "TBD"}</span></span>
                     <span>PASS <span className="text-slate-300">{m.password || "TBD"}</span></span>
                     <div className="ml-auto flex gap-2">
-                      <button onClick={() => setMatchDraft(m)} className="btn-primary px-4 py-1.5 font-display text-[9px]">EDIT / SCORES</button>
+                      <button onClick={() => openMatchEditor(m)} className="btn-primary px-4 py-1.5 font-display text-[9px]">EDIT / SCORES</button>
                       <button
                         onClick={() => {
                           if (confirm(`Remove match ${m.id}?`)) deleteMatch(m.id);
@@ -760,7 +793,7 @@ export default function AdminPage() {
             )}
 
             {showMatchCreate && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
+              <motion.div id="admin-match-create-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-display text-sm font-bold text-white">CREATE NEW MATCH</p>
@@ -775,7 +808,7 @@ export default function AdminPage() {
             )}
 
             {matchDraft && (
-              <div className="border border-cyan-400/40 bg-[#0a0d16]/90 p-5">
+              <div id="admin-match-editor" className="border border-cyan-400/40 bg-[#0a0d16]/90 p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <p className="font-display text-sm font-bold text-white">EDIT MATCH {matchDraft.id}</p>
                   <button onClick={() => setMatchDraft(null)} className="btn-ghost px-4 py-2 font-display text-[10px]">CLOSE</button>

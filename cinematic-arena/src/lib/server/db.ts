@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { list as blobList, get as blobGet, put as blobPut } from "@vercel/blob";
+import { head as blobHead, put as blobPut } from "@vercel/blob";
 import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, matches as seedMatches, defaultNotifications, type Tournament, type Notification } from "@/data/arena";
 
 export interface ServerUser {
@@ -117,6 +117,8 @@ const DB_PATH = path.join(DATA_DIR, "db.json");
 const BLOB_KEY = "nla-db/db.json";
 const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 
+let memDB: DBShape | null = null;
+
 const seedUsers: ServerUser[] = [
   { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", phone: "7000000001", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
   { id: "u-demo", name: "Viper", email: "player@arena.in", phone: "7001234567", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
@@ -214,13 +216,15 @@ function normalizeShape(parsed: unknown): DBShape {
 
 async function readBlobText(): Promise<string | null> {
   try {
-    const { blobs } = await blobList({ prefix: BLOB_KEY, limit: 1 });
-    if (!blobs || blobs.length === 0) return null;
-    const res = await blobGet(blobs[0].url, { access: "public", useCache: false });
-    if (!res || !res.stream) return null;
-    return await new Response(res.stream).text();
-  } catch {
-    return null;
+    const meta = await blobHead(BLOB_KEY);
+    if (!meta || !meta.url) return null;
+    const res = await fetch(`${meta.url}?download=1&_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch (err) {
+    const msg = String((err as Error)?.message || "").toLowerCase();
+    if (msg.includes("not found") || msg.includes("404")) return null;
+    throw err;
   }
 }
 
@@ -228,42 +232,38 @@ async function writeBlobText(text: string) {
   await blobPut(BLOB_KEY, text, {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json",
   });
 }
 
 export async function readDB(): Promise<DBShape> {
-  try {
-    let raw: string | null = null;
-    if (USE_BLOB) {
-      raw = await readBlobText();
-    } else if (fs.existsSync(DB_PATH)) {
-      raw = fs.readFileSync(DB_PATH, "utf-8");
-    }
-    if (raw) {
-      return normalizeShape(JSON.parse(raw) as unknown);
-    }
-    const fresh = defaultDB();
-    await writeDB(fresh);
-    return fresh;
-  } catch {
-    return defaultDB();
+  if (memDB) return memDB;
+  let raw: string | null = null;
+  if (USE_BLOB) {
+    raw = await readBlobText();
+  } else if (fs.existsSync(DB_PATH)) {
+    raw = fs.readFileSync(DB_PATH, "utf-8");
   }
+  if (raw) {
+    memDB = normalizeShape(JSON.parse(raw) as unknown);
+    return memDB;
+  }
+  const fresh = defaultDB();
+  await writeDB(fresh);
+  return fresh;
 }
 
 export async function writeDB(db: DBShape) {
-  try {
-    const text = JSON.stringify(db);
-    if (USE_BLOB) {
-      await writeBlobText(text);
-    } else {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-      }
-      fs.writeFileSync(DB_PATH, text, "utf-8");
+  memDB = db;
+  const text = JSON.stringify(db);
+  if (USE_BLOB) {
+    await writeBlobText(text);
+  } else {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-  } catch {
-    // ignore write errors
+    fs.writeFileSync(DB_PATH, text, "utf-8");
   }
 }
 

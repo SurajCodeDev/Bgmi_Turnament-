@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import {
   getRegistrationsForUser,
+  refreshRegistrations,
   getTournament,
   getPlayers,
   getTeams,
@@ -44,7 +45,11 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (user) setRegistrations(getRegistrationsForUser(user.id));
+    if (user) {
+      refreshRegistrations(user.id)
+        .then(() => setRegistrations(getRegistrationsForUser(user.id)))
+        .catch(() => setRegistrations(getRegistrationsForUser(user.id)));
+    }
     setNotifications(getNotifications());
   }, [user, refresh]);
 

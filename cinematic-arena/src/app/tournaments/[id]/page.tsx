@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
-import { getTournament, getTournaments, getRegistrations, isRegistered, registerForTournament, unregisterFromTournament } from "@/lib/store";
+import { getTournament, getTournaments, getRegistrations, isRegistered, registerForTournament, unregisterFromTournament, refreshRegistrations } from "@/lib/store";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
 import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, type ApiRoom } from "@/lib/api";
@@ -49,7 +49,7 @@ export default function TournamentDetailPage() {
   }, [id, refresh]);
 
   useEffect(() => {
-    setRegistered(!!user && isRegistered(user.id, id));
+    let active = true;
     if (user) {
       setForm({
         playerName: user.name ?? "",
@@ -57,7 +57,13 @@ export default function TournamentDetailPage() {
         playerEmail: user.email ?? "",
         teamName: user.team ?? "",
       });
+      refreshRegistrations(user.id)
+        .then(() => { if (active) setRegistered(isRegistered(user.id, id)); })
+        .catch(() => { if (active) setRegistered(isRegistered(user.id, id)); });
+    } else {
+      setRegistered(false);
     }
+    return () => { active = false; };
   }, [user, id]);
 
   useEffect(() => {

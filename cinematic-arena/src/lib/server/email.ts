@@ -5,9 +5,13 @@ export function emailDeliveryEnabled(): boolean {
 }
 
 export function emailReachable(email: string): boolean {
-  const toDomain = (process.env.OTP_EMAIL_TO_DOMAIN || "").toLowerCase();
-  if (!toDomain) return true;
-  return email.toLowerCase().endsWith("@" + toDomain);
+  const address = String(email || "").trim().toLowerCase();
+  const domain = (process.env.OTP_EMAIL_TO_DOMAIN || "").toLowerCase().trim();
+  const testRecipient = (process.env.OTP_TEST_RECIPIENT || "").toLowerCase().trim();
+
+  if (testRecipient && address === testRecipient) return true;
+  if (domain) return address.endsWith("@" + domain);
+  return false;
 }
 
 export async function sendOtpEmail(to: string, name: string, otp: string): Promise<boolean> {

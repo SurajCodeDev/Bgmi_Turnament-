@@ -7,7 +7,17 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   const db = await readDB();
-  const regs = userId ? db.registrations.filter((r) => r.userId === userId) : db.registrations;
+  const user = await getSessionUser(db);
+  if (!user) {
+    return NextResponse.json({ ok: true, registrations: [] });
+  }
+  const isAdmin = user.role === "admin";
+  if (userId && !isAdmin && userId !== user.id) {
+    return NextResponse.json({ ok: false, error: "Not allowed." }, { status: 403 });
+  }
+  const regs = isAdmin
+    ? db.registrations
+    : db.registrations.filter((r) => r.userId === user.id);
   return NextResponse.json({ ok: true, registrations: regs });
 }
 

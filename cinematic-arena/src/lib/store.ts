@@ -184,6 +184,11 @@ export function getRegistrations(): ApiRegistration[] {
   return cachedRegistrations;
 }
 
+export async function refreshRegistrations(userId?: string) {
+  cachedRegistrations = await apiGetRegistrations(userId);
+  emit();
+}
+
 export function getRegistrationsForUser(userId: string): ApiRegistration[] {
   return getRegistrations().filter((r) => r.userId === userId);
 }

@@ -31,6 +31,7 @@ import {
   getRegistrations,
   refreshStore,
   refreshUsers,
+  refreshRegistrations,
   type Tournament,
 } from "@/lib/store";
 
@@ -83,6 +84,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (user?.role === "admin") {
       refreshUsers().catch(() => {});
+      refreshRegistrations().catch(() => {});
     }
   }, [user?.id, user?.role]);
 

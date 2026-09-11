@@ -28,6 +28,7 @@ export function Footer() {
                   {l.label}
                 </a>
               ))}
+              <a href="/tournaments" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Tournaments</a>
               <a href="/matches" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Matches</a>
               <a href="/bracket" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Bracket</a>
               <a href="/news" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">News</a>

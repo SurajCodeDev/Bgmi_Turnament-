@@ -601,6 +601,14 @@ export interface NewsItem {
 
 export const newsItems: NewsItem[] = [
   {
+    id: "n-005",
+    title: "BGMI 4.6 Midnight Hunters Update Is Live",
+    category: "UPDATE",
+    date: "11 SEP 2026",
+    excerpt: "Vampires take over Erangel in the BGMI 4.6 Midnight Hunters theme mode. New supernatural gameplay, weapons and rewards.",
+    image: "/images/bgmi-midnight-hunters.jpg",
+  },
+  {
     id: "n-001",
     title: "BGMI Championship Series Grand Final Lineup Announced",
     category: "ANNOUNCEMENT",

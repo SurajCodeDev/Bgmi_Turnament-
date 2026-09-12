@@ -1,4 +1,5 @@
 import { Hero } from "@/components/Hero";
+import { MidnightHuntersBanner } from "@/components/MidnightHuntersBanner";
 import { StorySection } from "@/components/StorySection";
 import { TournamentSection } from "@/components/TournamentSection";
 import { HackerSection } from "@/components/HackerSection";
@@ -13,6 +14,7 @@ export default function Home() {
   return (
     <main>
       <Hero />
+      <MidnightHuntersBanner />
       <StorySection />
       <TournamentSection />
       <HackerSection />

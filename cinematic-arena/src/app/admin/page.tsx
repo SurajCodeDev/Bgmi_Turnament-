@@ -65,6 +65,10 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Tournament | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [createDraft, setCreateDraft] = useState<Omit<Tournament, "id">>(() => ({
+    ...emptyTournament,
+    rules: [...emptyTournament.rules],
+  }));
   const [toast, setToast] = useState("");
   const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations" | "payments" | "withdrawals">("tournaments");
   const [regFilter, setRegFilter] = useState("");
@@ -153,10 +157,15 @@ export default function AdminPage() {
   };
 
   const createTournament = async () => {
-    const t: Tournament = { ...emptyTournament, id: `t-${Date.now()}`, rules: [...emptyTournament.rules] };
+    const t: Tournament = {
+      ...createDraft,
+      rules: [...createDraft.rules],
+      id: `t-${Date.now()}`,
+    };
     await addTournament(t);
     setTournaments(getTournaments());
     setShowCreate(false);
+    setCreateDraft({ ...emptyTournament, rules: [...emptyTournament.rules] });
     showToast("TOURNAMENT CREATED");
   };
 
@@ -289,6 +298,10 @@ export default function AdminPage() {
     setDraft({ ...draft, [field]: value });
   };
 
+  const setCreateField = (field: keyof Omit<Tournament, "id">, value: string | number | string[]) => {
+    setCreateDraft((d) => ({ ...d, [field]: value }));
+  };
+
   const registrations = getRegistrations();
   const users = getUsers();
   const filteredRegistrations = registrations.filter((r) => {
@@ -323,6 +336,7 @@ export default function AdminPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => {
+                  setCreateDraft({ ...emptyTournament, rules: [...emptyTournament.rules] });
                   setShowCreate(true);
                   requestAnimationFrame(() => setTimeout(() => document.getElementById("admin-create-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80));
                 }}
@@ -487,6 +501,26 @@ export default function AdminPage() {
                           <label className={labelCls}>TEAMS JOINED</label>
                           <input type="number" className={inputCls} value={draft.teamsJoined} onChange={(e) => setDraftField("teamsJoined", parseInt(e.target.value, 10) || 0)} />
                         </div>
+                        <div>
+                          <label className={labelCls}>CATEGORY / TAG</label>
+                          <select className={inputCls} value={draft.tag || ""} onChange={(e) => setDraftField("tag", e.target.value)}>
+                            <option value="">STANDARD</option>
+                            <option value="HACKER">HACKER</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelCls}>IMAGE URL</label>
+                          <input className={inputCls} value={draft.image} onChange={(e) => setDraftField("image", e.target.value)} />
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <label className={labelCls}>RULES (one per line)</label>
+                          <textarea
+                            rows={3}
+                            className={inputCls}
+                            value={draft.rules.join("\n")}
+                            onChange={(e) => setDraftField("rules", e.target.value.split("\n").map((r) => r.trim()).filter(Boolean))}
+                          />
+                        </div>
                       </div>
 
                       <div className="mt-4 flex items-center justify-between gap-4 border-t border-[#1a2134] pt-4">
@@ -508,19 +542,94 @@ export default function AdminPage() {
 
             {showCreate && (
               <motion.div id="admin-create-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-4">
+                  <p className="font-display text-sm font-bold text-white">CREATE NEW TOURNAMENT</p>
+                  <p className="mt-1 font-body text-xs text-slate-400">Fill in the details below. Entry fee accepts FREE or INVITE.</p>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
-                    <p className="font-display text-sm font-bold text-white">CREATE NEW TOURNAMENT</p>
-                    <p className="mt-1 font-body text-xs text-slate-400">Defaults applied — edit after creation.</p>
+                    <label className={labelCls}>TOURNAMENT NAME</label>
+                    <input className={inputCls} value={createDraft.name} onChange={(e) => setCreateField("name", e.target.value)} />
                   </div>
-                  <div className="flex gap-2">
-                    <button onClick={createTournament} className="btn-primary px-6 py-2.5 font-display text-[11px]">
-                      CREATE
-                    </button>
-                    <button onClick={() => setShowCreate(false)} className="btn-ghost px-6 py-2.5 font-display text-[11px]">
-                      CANCEL
-                    </button>
+                  <div>
+                    <label className={labelCls}>SHORT NAME</label>
+                    <input className={inputCls} value={createDraft.short} onChange={(e) => setCreateField("short", e.target.value)} />
                   </div>
+                  <div>
+                    <label className={labelCls}>STATUS</label>
+                    <select className={inputCls} value={createDraft.status} onChange={(e) => setCreateField("status", e.target.value)}>
+                      <option>UPCOMING</option>
+                      <option>REGISTRATION OPEN</option>
+                      <option>LIVE</option>
+                      <option>COMPLETED</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>PRIZE POOL</label>
+                    <input className={inputCls} value={createDraft.prizePool} onChange={(e) => setCreateField("prizePool", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>ENTRY FEE</label>
+                    <input className={inputCls} value={createDraft.entryFee} onChange={(e) => setCreateField("entryFee", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>MODE</label>
+                    <select className={inputCls} value={createDraft.mode} onChange={(e) => setCreateField("mode", e.target.value)}>
+                      <option>SOLO</option>
+                      <option>DUO</option>
+                      <option>SQUAD</option>
+                      <option>TDM</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>TOTAL TEAMS</label>
+                    <input type="number" className={inputCls} value={createDraft.teams} onChange={(e) => setCreateField("teams", parseInt(e.target.value, 10) || 0)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>DATE</label>
+                    <input className={inputCls} value={createDraft.date} onChange={(e) => setCreateField("date", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>TIME</label>
+                    <input className={inputCls} value={createDraft.time} onChange={(e) => setCreateField("time", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>MAP</label>
+                    <select className={inputCls} value={createDraft.map} onChange={(e) => setCreateField("map", e.target.value)}>
+                      <option>ERANGEL</option>
+                      <option>MIRAMAR</option>
+                      <option>SANHOK</option>
+                      <option>LIVIK</option>
+                      <option>WAREHOUSE</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>FORMAT</label>
+                    <input className={inputCls} value={createDraft.format} onChange={(e) => setCreateField("format", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>IMAGE URL</label>
+                    <input className={inputCls} value={createDraft.image} onChange={(e) => setCreateField("image", e.target.value)} />
+                  </div>
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label className={labelCls}>RULES (one per line)</label>
+                    <textarea
+                      rows={3}
+                      className={inputCls}
+                      value={createDraft.rules.join("\n")}
+                      onChange={(e) => setCreateField("rules", e.target.value.split("\n").map((r) => r.trim()).filter(Boolean))}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end gap-2 border-t border-[#1a2134] pt-4">
+                  <button onClick={createTournament} className="btn-primary px-6 py-2.5 font-display text-[11px]">
+                    CREATE
+                  </button>
+                  <button onClick={() => setShowCreate(false)} className="btn-ghost px-6 py-2.5 font-display text-[11px]">
+                    CANCEL
+                  </button>
                 </div>
               </motion.div>
             )}

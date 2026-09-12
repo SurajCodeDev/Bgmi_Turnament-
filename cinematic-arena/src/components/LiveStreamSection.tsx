@@ -27,7 +27,7 @@ export function LiveStreamSection() {
             className="holo-panel scanline clip-corner relative overflow-hidden lg:col-span-2"
           >
             <div className="relative aspect-video w-full overflow-hidden">
-              <img src="/images/bgmi-13.jpg" alt="Live broadcast" className="h-full w-full object-cover" />
+              <img src="/images/esports-live.jpg" alt="Live esports broadcast on a big screen" className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16]/80 via-transparent to-[#0a0d16]/30" />
               <div className="absolute left-4 top-4 flex items-center gap-2 rounded-sm border border-red-500/60 bg-[#05060a]/80 px-3 py-1.5">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />

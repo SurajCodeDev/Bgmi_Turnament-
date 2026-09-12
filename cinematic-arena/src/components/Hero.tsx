@@ -22,8 +22,8 @@ export function Hero() {
     <section id="arena" className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
         <img
-          src="/images/bgmi-hero.jpg"
-          alt="BGMI battle arena"
+          src="/images/esports-hero.jpg"
+          alt="Esports arena under neon lights"
           className="h-full w-full object-cover opacity-30"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#05060a]/70 via-[#05060a]/40 to-[#05060a]" />

@@ -33,6 +33,13 @@ export async function POST(req: Request) {
     });
   }
 
+  if (!canDeliver && !OTP_MOCK) {
+    return NextResponse.json(
+      { ok: false, error: "OTP email delivery is not available for this address yet. Please sign in with your password." },
+      { status: 503 }
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     sentTo: id,

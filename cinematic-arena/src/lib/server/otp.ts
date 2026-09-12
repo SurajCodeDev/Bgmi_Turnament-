@@ -1,7 +1,12 @@
 import crypto from "crypto";
 import { readDB, writeDB } from "./db";
 
-export const OTP_MOCK = true;
+// Mock OTP must never be exposed in production: it lets anyone read an
+// account's OTP from the API response and sign in as that user.
+export const OTP_MOCK =
+  process.env.OTP_DEV_MODE !== undefined
+    ? process.env.OTP_DEV_MODE !== "false"
+    : process.env.NODE_ENV !== "production";
 export const OTP_EXPIRY_MS = 10 * 60 * 1000;
 
 export function isValidEmail(email: string): boolean {

@@ -4,6 +4,7 @@ import type { User } from "@/lib/store";
 export interface ApiUser {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   role: "admin" | "player";
@@ -12,6 +13,8 @@ export interface ApiUser {
   wallet: number;
   emailVerified: boolean;
   phoneVerified: boolean;
+  createdAt?: string;
+  transactions?: ApiTransaction[];
 }
 
 export interface ApiRegistrationMember {

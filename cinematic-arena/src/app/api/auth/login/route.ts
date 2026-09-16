@@ -12,7 +12,10 @@ export async function POST(req: Request) {
 
   const db = await readDB();
   const user = db.users.find(
-    (u) => u.email.toLowerCase() === id || u.phone === id
+    (u) =>
+      u.email.toLowerCase() === id ||
+      u.phone === id ||
+      (u.username ? u.username.toLowerCase() === id : false)
   );
 
   if (!user || user.password !== password) {

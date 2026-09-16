@@ -16,9 +16,11 @@ import {
   apiDeleteMatch,
   apiDeclareWinner,
   apiSetRoom,
+  apiGetUsers,
   type PaymentProof,
   type Withdrawal,
   type Match,
+  type ApiUser,
 } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
 import {
@@ -27,10 +29,8 @@ import {
   addTournament,
   removeTournament,
   resetTournaments,
-  getUsers,
   getRegistrations,
   refreshStore,
-  refreshUsers,
   refreshRegistrations,
   type Tournament,
 } from "@/lib/store";
@@ -76,6 +76,9 @@ export default function AdminPage() {
   const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string } | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [userFilter, setUserFilter] = useState("");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [winnerDraft, setWinnerDraft] = useState<{ tournamentId: string; winner: string } | null>(null);
   const [roomDraft, setRoomDraft] = useState<{ tournamentId: string; roomId: string; password: string } | null>(null);
   const [matchDraft, setMatchDraft] = useState<Match | null>(null);
@@ -87,7 +90,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (user?.role === "admin") {
-      refreshUsers().catch(() => {});
+      apiGetUsers()
+        .then((us) => setUsers(us))
+        .catch(() => {});
       refreshRegistrations().catch(() => {});
     }
   }, [user?.id, user?.role]);
@@ -109,7 +114,12 @@ export default function AdminPage() {
     apiGetMatches()
       .then((ms) => setMatches(ms))
       .catch(() => {});
-  }, [refresh]);
+    if (user?.role === "admin") {
+      apiGetUsers()
+        .then((us) => setUsers(us))
+        .catch(() => {});
+    }
+  }, [refresh, user?.role]);
 
   if (loading) return null;
 
@@ -303,7 +313,18 @@ export default function AdminPage() {
   };
 
   const registrations = getRegistrations();
-  const users = getUsers();
+  const filteredUsers = users.filter((u) => {
+    const q = userFilter.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      u.name.toLowerCase().includes(q) ||
+      (u.username || "").toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.phone.includes(q) ||
+      u.uid.includes(q) ||
+      u.team.toLowerCase().includes(q)
+    );
+  });
   const filteredRegistrations = registrations.filter((r) => {
     const q = regFilter.toLowerCase().trim();
     if (!q) return true;
@@ -320,6 +341,39 @@ export default function AdminPage() {
     const n = parseInt(t.prizePool.replace(/[^\d]/g, ""), 10) || 0;
     return sum + n;
   }, 0);
+
+  const playerCount = users.filter((u) => u.role === "player").length;
+  const adminCount = users.filter((u) => u.role === "admin").length;
+  const walletTotal = users.reduce((sum, u) => sum + (u.wallet || 0), 0);
+  const prizeCredited = users.reduce(
+    (sum, u) => sum + (u.transactions || []).filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0),
+    0
+  );
+
+  type Tone = "emerald" | "red" | "cyan" | "amber" | "slate";
+  const badgeCls = (tone: Tone) =>
+    ({
+      emerald: "border-emerald-500/40 text-emerald-400",
+      red: "border-red-500/40 text-red-400",
+      cyan: "border-cyan-400/40 text-cyan-400",
+      amber: "border-amber-400/40 text-amber-400",
+      slate: "border-slate-600/50 text-slate-400",
+    }[tone]);
+
+  const resolveResult = (tournamentId: string, teamName: string, playerName: string) => {
+    const t = tournaments.find((x) => x.id === tournamentId);
+    if (!t) return { label: "UNKNOWN", tone: "slate" as Tone, detail: "Tournament removed" };
+    const winner = (t.winner || "").toLowerCase();
+    const won = !!winner && (winner === teamName.toLowerCase() || winner === playerName.toLowerCase());
+    if (t.status === "COMPLETED") {
+      if (won) return { label: "WON", tone: "emerald" as Tone, detail: `Prize ${t.prizePool}` };
+      return { label: winner ? "LOST" : "COMPLETED", tone: (winner ? "red" : "slate") as Tone, detail: winner ? `Winner: ${t.winner}` : "No result" };
+    }
+    if (t.status === "LIVE") return { label: "LIVE NOW", tone: "red" as Tone, detail: `${t.map} · ${t.time}` };
+    return { label: "UPCOMING", tone: "cyan" as Tone, detail: `${t.date} · ${t.time} · ${t.map}` };
+  };
+
+  const resultRank: Record<string, number> = { "LIVE NOW": 0, UPCOMING: 1, WON: 2, COMPLETED: 3, LOST: 4, UNKNOWN: 5 };
 
   return (
     <main className="relative min-h-screen overflow-hidden px-6 py-24">
@@ -800,38 +854,222 @@ export default function AdminPage() {
         )}
 
         {tab === "users" && (
-          <div className="space-y-3">
-            {users.map((u, i) => {
-              const userRegs = registrations.filter((r) => r.userId === u.id);
-              return (
-                <motion.div key={u.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="flex flex-col gap-3 border border-[#1a2134] bg-[#0a0d16]/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-base font-black text-cyan-400">
-                      {u.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-body text-sm font-semibold text-slate-200">{u.name}</p>
-                        <span className={`rounded-sm border px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] ${u.role === "admin" ? "border-red-500/50 text-red-400" : "border-cyan-400/40 text-cyan-400"}`}>
-                          {u.role.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
-                        {u.email} · UID {u.uid} · {u.team}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="rounded-sm border border-[#1a2134] bg-[#05060a] px-3 py-1.5 font-body text-[10px] tracking-[0.15em] text-slate-400">
-                      {userRegs.length} REGISTRATIONS
-                    </span>
-                    <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">JOINED {u.createdAt ? u.createdAt.slice(0, 10) : "—"}</span>
-                  </div>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              {[
+                { label: "TOTAL ACCOUNTS", value: users.length },
+                { label: "PLAYER ACCOUNTS", value: playerCount },
+                { label: "ADMIN ACCOUNTS", value: adminCount },
+                { label: "WALLET HELD", value: formatINR(walletTotal) },
+              ].map((s, i) => (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className="holo-panel clip-corner-sm flex flex-col items-center py-5 text-center"
+                >
+                  <span className="font-display text-xl font-black text-white sm:text-2xl">{s.value}</span>
+                  <span className="mt-1.5 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">{s.label}</span>
                 </motion.div>
-              );
-            })}
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="font-body text-[11px] tracking-[0.2em] text-slate-400">
+                TOTAL PRIZE CREDITED: <span className="font-bold text-emerald-400">{formatINR(prizeCredited)}</span>
+                <span className="mx-2 text-slate-700">|</span>
+                SHOWING: <span className="font-bold text-cyan-400">{filteredUsers.length}</span>
+              </p>
+              <input
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value)}
+                placeholder="SEARCH PLAYER / USERNAME / EMAIL / UID..."
+                className="w-full border border-[#1a2134] bg-[#05060a] px-3 py-2 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60 sm:w-96"
+              />
+            </div>
+
+            {filteredUsers.length === 0 ? (
+              <div className="holo-panel clip-corner flex flex-col items-center py-16 text-center">
+                <p className="font-display text-sm font-bold text-white">NO ACCOUNTS FOUND</p>
+                <p className="mt-2 font-body text-xs text-slate-500">Player accounts will appear here once they register.</p>
+              </div>
+            ) : (
+              filteredUsers.map((u, i) => {
+                const userRegs = registrations
+                  .filter((r) => r.userId === u.id)
+                  .map((r) => ({ reg: r, result: resolveResult(r.tournamentId, r.teamName, r.playerName) }))
+                  .sort((a, b) => (resultRank[a.result.label] ?? 9) - (resultRank[b.result.label] ?? 9));
+                const wins = userRegs.filter((x) => x.result.label === "WON").length;
+                const upcoming = userRegs.filter((x) => x.result.label === "UPCOMING").length;
+                const live = userRegs.filter((x) => x.result.label === "LIVE NOW").length;
+                const userTx = u.transactions || [];
+                const prizeWon = userTx.filter((t) => t.amount > 0).reduce((a, t) => a + t.amount, 0);
+                const spent = Math.abs(userTx.filter((t) => t.amount < 0).reduce((a, t) => a + t.amount, 0));
+                const isOpen = expandedUser === u.id;
+
+                return (
+                  <motion.div
+                    key={u.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="border border-[#1a2134] bg-[#0a0d16]/70"
+                  >
+                    <button
+                      onClick={() => setExpandedUser(isOpen ? null : u.id)}
+                      className="flex w-full flex-col gap-3 p-4 text-left transition-colors hover:bg-[#0e1220]/40 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-lg font-black text-cyan-400">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-body text-sm font-semibold text-slate-200">{u.name}</p>
+                            <span className={`rounded-sm border px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] ${u.role === "admin" ? "border-red-500/50 text-red-400" : "border-cyan-400/40 text-cyan-400"}`}>
+                              {u.role.toUpperCase()}
+                            </span>
+                            {u.username && (
+                              <span className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] text-slate-500">
+                                @{u.username}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
+                            {u.email || "—"} · {u.phone || "no mobile"} · UID {u.uid} · {u.team}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="rounded-sm border border-[#1a2134] bg-[#05060a] px-3 py-1.5 font-body text-[10px] tracking-[0.15em] text-slate-400">
+                          {userRegs.length} REGISTRATIONS
+                        </span>
+                        <span className="rounded-sm border border-cyan-400/30 bg-cyan-400/5 px-3 py-1.5 font-body text-[10px] tracking-[0.1em] text-cyan-400">
+                          {formatINR(u.wallet || 0)}
+                        </span>
+                        <span className={`font-display text-xs text-cyan-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                      </div>
+                    </button>
+
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="overflow-hidden border-t border-[#1a2134]"
+                        >
+                          <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-6">
+                            {[
+                              { label: "REGISTERED", value: String(userRegs.length), tone: "text-white" },
+                              { label: "WINS", value: String(wins), tone: "text-emerald-400" },
+                              { label: "LIVE", value: String(live), tone: "text-red-400" },
+                              { label: "UPCOMING", value: String(upcoming), tone: "text-cyan-400" },
+                              { label: "PRIZE WON", value: formatINR(prizeWon), tone: "text-emerald-400" },
+                              { label: "WALLET", value: formatINR(u.wallet || 0), tone: "text-cyan-400" },
+                            ].map((s) => (
+                              <div key={s.label} className="border border-[#12182a] bg-[#05060a] px-3 py-3 text-center">
+                                <p className={`font-display text-sm font-black ${s.tone}`}>{s.value}</p>
+                                <p className="mt-1 font-body text-[8px] font-semibold tracking-[0.25em] text-slate-500">{s.label}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="border-t border-[#1a2134] p-4">
+                            <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.3em] text-cyan-400">ACCOUNT DETAILS</p>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                              {[
+                                { k: "EMAIL", v: u.email || "—" },
+                                { k: "MOBILE", v: u.phone || "—" },
+                                { k: "BGMI UID", v: u.uid || "—" },
+                                { k: "TEAM", v: u.team || "—" },
+                                { k: "USERNAME", v: u.username ? `@${u.username}` : "—" },
+                                { k: "JOINED", v: u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—" },
+                                { k: "EMAIL VERIFIED", v: u.emailVerified ? "YES" : "NO" },
+                                { k: "PHONE VERIFIED", v: u.phoneVerified ? "YES" : "NO" },
+                                { k: "TOTAL SPENT", v: formatINR(spent) },
+                              ].map((row) => (
+                                <div key={row.k} className="border-l-2 border-[#1a2134] pl-3">
+                                  <p className="font-body text-[8px] font-semibold tracking-[0.25em] text-slate-500">{row.k}</p>
+                                  <p className="mt-0.5 break-all font-body text-xs text-slate-200">{row.v}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="border-t border-[#1a2134] p-4">
+                            <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.3em] text-cyan-400">
+                              TOURNAMENT DASHBOARD ({userRegs.length})
+                            </p>
+                            {userRegs.length === 0 ? (
+                              <p className="py-4 text-center font-body text-xs text-slate-600">NO TOURNAMENT REGISTRATIONS YET</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {userRegs.map(({ reg, result }) => (
+                                  <div key={`${reg.userId}-${reg.tournamentId}`} className="flex flex-col gap-2 border border-[#12182a] bg-[#05060a] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="min-w-0">
+                                      <p className="font-body text-xs font-semibold text-slate-200">{reg.tournamentName}</p>
+                                      <p className="mt-0.5 font-body text-[9px] tracking-[0.1em] text-slate-500">
+                                        {reg.teamName} · CAPT {reg.playerName} · UID {reg.playerUid} · {result.detail}
+                                      </p>
+                                      {reg.members && reg.members.length > 0 && (
+                                        <div className="mt-1.5 flex flex-wrap gap-1">
+                                          {reg.members.map((m, mi) => (
+                                            <span key={mi} className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.1em] text-slate-500">
+                                              {m.name}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                      <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.15em] ${badgeCls(result.tone)}`}>
+                                        {result.label}
+                                      </span>
+                                      <span className="rounded-sm border border-[#1a2134] px-2 py-0.5 font-body text-[9px] tracking-[0.1em] text-slate-500">
+                                        {reg.status}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {userTx.length > 0 && (
+                            <div className="border-t border-[#1a2134] p-4">
+                              <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.3em] text-cyan-400">
+                                WALLET TRANSACTIONS ({userTx.length})
+                              </p>
+                              <div className="space-y-1.5">
+                                {userTx.slice(0, 8).map((tx) => (
+                                  <div key={tx.id} className="flex items-center justify-between gap-3 border border-[#12182a] bg-[#05060a] px-3 py-2">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-body text-xs text-slate-300">{tx.label}</p>
+                                      <p className="font-body text-[9px] tracking-[0.1em] text-slate-600">
+                                        {tx.status} · {tx.createdAt ? String(tx.createdAt).slice(0, 10) : "—"}
+                                      </p>
+                                    </div>
+                                    <span className={`shrink-0 font-display text-xs font-black ${tx.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                                      {tx.amount >= 0 ? "+" : ""}{formatINR(tx.amount)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         )}
+
 
         {tab === "matches" && (
           <div className="space-y-3">

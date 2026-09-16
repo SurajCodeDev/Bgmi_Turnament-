@@ -11,11 +11,19 @@ export async function GET() {
   const safe = db.users.map((u) => ({
     id: u.id,
     name: u.name,
+    username: u.username,
     email: u.email,
+    phone: u.phone,
     role: u.role,
     uid: u.uid,
     team: u.team,
+    wallet: u.wallet,
+    emailVerified: u.emailVerified,
+    phoneVerified: u.phoneVerified,
     createdAt: u.createdAt,
+    transactions: db.transactions
+      .filter((t) => t.userId === u.id)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
   }));
   return NextResponse.json({ ok: true, users: safe });
 }

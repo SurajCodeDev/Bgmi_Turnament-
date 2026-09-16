@@ -6,6 +6,7 @@ import { tournaments as seedTournaments, teams as seedTeams, players as seedPlay
 export interface ServerUser {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   password: string;
@@ -119,40 +120,39 @@ const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 let memDB: DBShape | null = null;
 
+// --- Secret owner/admin account (only credentials to be used for admin access) ---
+export const ADMIN_USERNAME = "adminsk";
+export const ADMIN_PASSWORD = "skadmin123";
+
 const seedUsers: ServerUser[] = [
-  { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", phone: "7000000001", password: "admin123", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
-  { id: "u-demo", name: "Viper", email: "player@arena.in", phone: "7001234567", password: "player123", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, emailVerified: true, phoneVerified: true, createdAt: "2024-08-01" },
+  {
+    id: "u-admin",
+    name: "SK Admin",
+    username: ADMIN_USERNAME,
+    email: "adminsk@nextlevelarena.in",
+    phone: "7000000001",
+    password: ADMIN_PASSWORD,
+    role: "admin",
+    uid: "5400000001",
+    team: "NEXT LEVEL ARENA",
+    wallet: 0,
+    emailVerified: true,
+    phoneVerified: true,
+    createdAt: "2024-08-01",
+  },
 ];
+
+const LEGACY_DEMO_EMAILS = new Set(["admin@arena.in", "player@arena.in"]);
+const LEGACY_DEMO_IDS = new Set(["u-demo"]);
 
 const seedDB: DBShape = {
   tournaments: seedTournaments,
   users: seedUsers,
-  registrations: [
-    {
-      userId: "u-demo",
-      tournamentId: "t-006",
-      tournamentName: "BGMI Community Clash",
-      playerName: "Viper",
-      playerUid: "5401234567",
-      playerEmail: "player@arena.in",
-      teamName: "Team Nova",
-      members: [
-        { name: "Blitz", uid: "5402222333" },
-        { name: "Cipher", uid: "5403333444" },
-        { name: "Frost", uid: "5404444555" },
-      ],
-      claimed: false,
-      status: "PAID",
-      registeredAt: "2024-08-14T10:00:00.000Z",
-    },
-  ],
+  registrations: [],
   matches: seedMatches,
   notifications: defaultNotifications,
   disputes: [],
-  transactions: [
-    { id: "tx-1", userId: "u-demo", label: "Prize — BGMI Championship Series", amount: 210000, status: "CREDITED", createdAt: "2024-08-15" },
-    { id: "tx-2", userId: "u-demo", label: "Entry Fee — Rising Stars Cup", amount: -99, status: "PAID", createdAt: "2024-08-20" },
-  ],
+  transactions: [],
   telegram: { enabled: false, botToken: "", channelId: "", announcements: [] },
   payments: [],
   withdrawals: [],
@@ -178,19 +178,34 @@ function normalizeShape(parsed: unknown): DBShape {
     telegram: { ...base.telegram, ...(data.telegram || {}) },
     payment: { ...base.payment, ...(data.payment || {}) },
   };
-  merged.users = (merged.users || []).map((u) => ({
-    ...u,
-    wallet: typeof u.wallet === "number" ? u.wallet : 0,
-    phone: u.phone || "",
-    emailVerified: !!u.emailVerified,
-    phoneVerified: !!u.phoneVerified,
-  }));
-  merged.registrations = (merged.registrations || []).map((r) => ({
-    ...r,
-    members: Array.isArray(r.members) ? r.members : [],
-    claimed: !!r.claimed,
-    status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
-  }));
+  merged.users = (merged.users || [])
+    .filter((u) => !LEGACY_DEMO_IDS.has(u.id) && !LEGACY_DEMO_EMAILS.has((u.email || "").toLowerCase()))
+    .map((u) => ({
+      ...u,
+      username: u.username || undefined,
+      wallet: typeof u.wallet === "number" ? u.wallet : 0,
+      phone: u.phone || "",
+      emailVerified: !!u.emailVerified,
+      phoneVerified: !!u.phoneVerified,
+    }));
+  // Guarantee the secret owner/admin account always exists and keeps its credentials.
+  const adminSeed = seedUsers[0];
+  const adminIndex = merged.users.findIndex(
+    (u) => u.role === "admin" && (u.id === adminSeed.id || u.username === ADMIN_USERNAME)
+  );
+  if (adminIndex >= 0) {
+    merged.users[adminIndex] = { ...merged.users[adminIndex], ...adminSeed };
+  } else {
+    merged.users.unshift({ ...adminSeed });
+  }
+  merged.registrations = (merged.registrations || [])
+    .filter((r) => !LEGACY_DEMO_IDS.has(r.userId) && !LEGACY_DEMO_EMAILS.has((r.playerEmail || "").toLowerCase()))
+    .map((r) => ({
+      ...r,
+      members: Array.isArray(r.members) ? r.members : [],
+      claimed: !!r.claimed,
+      status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
+    }));
   merged.tournaments = (merged.tournaments || []).map((t) => ({
     ...t,
     tag: t.tag || undefined,
@@ -203,13 +218,13 @@ function normalizeShape(parsed: unknown): DBShape {
       knownIds.add(seedT.id);
     }
   }
-  merged.payments = Array.isArray(merged.payments) ? merged.payments : [];
-  merged.otps = Array.isArray(merged.otps) ? merged.otps : [];
-  merged.withdrawals = Array.isArray(merged.withdrawals) ? merged.withdrawals : [];
+  merged.payments = (Array.isArray(merged.payments) ? merged.payments : []).filter((p) => !LEGACY_DEMO_IDS.has(p.userId));
+  merged.otps = (Array.isArray(merged.otps) ? merged.otps : []).filter((o) => !LEGACY_DEMO_IDS.has(o.userId));
+  merged.withdrawals = (Array.isArray(merged.withdrawals) ? merged.withdrawals : []).filter((w) => !LEGACY_DEMO_IDS.has(w.userId));
   merged.rooms = Array.isArray(merged.rooms) ? merged.rooms : [];
   merged.notifications = Array.isArray(merged.notifications) ? merged.notifications : [];
   merged.matches = Array.isArray(merged.matches) ? merged.matches : seedMatches;
-  merged.transactions = Array.isArray(merged.transactions) ? merged.transactions : [];
+  merged.transactions = (Array.isArray(merged.transactions) ? merged.transactions : []).filter((t) => !LEGACY_DEMO_IDS.has(t.userId));
   merged.disputes = Array.isArray(merged.disputes) ? merged.disputes : [];
   return merged;
 }

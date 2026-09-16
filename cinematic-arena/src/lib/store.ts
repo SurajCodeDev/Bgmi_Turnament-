@@ -156,13 +156,8 @@ export async function resetTournaments() {
 // ---------- Users / Auth ----------
 
 export function getUsers(): LocalUser[] {
-  const defaults: LocalUser[] = [
-    { id: "u-admin", name: "Arena Admin", email: "admin@arena.in", role: "admin", uid: "5400000001", team: "NEXT LEVEL ARENA", wallet: 1000000, createdAt: "2024-08-01" },
-    { id: "u-demo", name: "Viper", email: "player@arena.in", role: "player", uid: "5401234567", team: "Team Nova", wallet: 25000, createdAt: "2024-08-01" },
-  ];
-  const merged = [...defaults, ...cachedUsers];
   const seen = new Set<string>();
-  return merged.filter((u) => {
+  return cachedUsers.filter((u) => {
     if (seen.has(u.id)) return false;
     seen.add(u.id);
     return true;

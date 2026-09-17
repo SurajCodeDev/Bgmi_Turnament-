@@ -10,12 +10,12 @@ const features = [
 
 export function MidnightHuntersBanner() {
   return (
-    <section id="midnight-hunters" className="relative py-24">
+    <section id="midnight-hunters" className="relative overflow-x-hidden py-16 sm:py-24">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0510] to-transparent" />
-      <div className="relative z-10 mx-auto max-w-[1400px] px-6">
-        <div className="mb-14 flex flex-col items-center text-center">
+      <div className="relative z-10 mx-auto max-w-[1400px] px-4 sm:px-6">
+        <div className="mb-8 flex flex-col items-center text-center sm:mb-14">
           <span className="section-label mb-3">FEATURED EVENT</span>
-          <h2 className="font-display text-3xl font-black tracking-wide text-white sm:text-5xl">
+          <h2 className="font-display text-2xl font-black tracking-wide text-white sm:text-5xl">
             MIDNIGHT <span className="text-red-500">HUNTERS</span>
           </h2>
         </div>
@@ -35,11 +35,11 @@ export function MidnightHuntersBanner() {
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16] via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center gap-3">
-                <span className="rounded-sm border border-red-500/60 bg-[#05060a]/80 px-3 py-1.5 font-body text-[10px] font-bold tracking-[0.25em] text-red-400">
+              <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center gap-2 sm:bottom-4 sm:left-4 sm:right-4 sm:gap-3">
+                <span className="rounded-sm border border-red-500/60 bg-[#05060a]/80 px-2.5 py-1 font-body text-[9px] font-bold tracking-[0.18em] text-red-400 sm:px-3 sm:py-1.5 sm:text-[10px] sm:tracking-[0.25em]">
                   BGMI 4.6 · OUT NOW
                 </span>
-                <span className="font-body text-[10px] tracking-[0.25em] text-slate-300">HUNT FOR THE #1</span>
+                <span className="font-body text-[9px] tracking-[0.18em] text-slate-300 sm:text-[10px] sm:tracking-[0.25em]">HUNT FOR THE #1</span>
               </div>
             </div>
           </motion.div>
@@ -68,9 +68,9 @@ export function MidnightHuntersBanner() {
               </p>
               <div className="mb-5 space-y-2">
                 {features.map((f) => (
-                  <div key={f.label} className="flex items-center justify-between border-b border-[#1a2134] pb-2">
-                    <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">{f.label}</span>
-                    <span className="font-body text-[11px] font-semibold tracking-[0.1em] text-cyan-400">{f.value}</span>
+                  <div key={f.label} className="flex items-center justify-between gap-3 border-b border-[#1a2134] pb-2">
+                    <span className="shrink-0 font-body text-[10px] tracking-[0.2em] text-slate-500">{f.label}</span>
+                    <span className="min-w-0 truncate text-right font-body text-[11px] font-semibold tracking-[0.08em] text-cyan-400">{f.value}</span>
                   </div>
                 ))}
               </div>

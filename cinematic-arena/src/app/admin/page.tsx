@@ -376,47 +376,49 @@ export default function AdminPage() {
   const resultRank: Record<string, number> = { "LIVE NOW": 0, UPCOMING: 1, WON: 2, COMPLETED: 3, LOST: 4, UNKNOWN: 5 };
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-6 py-24">
+    <main className="relative min-h-screen overflow-x-hidden px-4 py-20 sm:px-6 sm:py-24">
       <div className="grid-bg absolute inset-0 opacity-25" />
       <div className="relative z-10 mx-auto max-w-[1200px]">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <span className="section-label mb-2">TOURNAMENT CONTROL CENTER</span>
-              <h1 className="font-display text-3xl font-black tracking-wide text-white sm:text-4xl">
+              <h1 className="font-display text-2xl font-black tracking-wide text-white sm:text-4xl">
                 ADMIN <span className="text-cyan-400">COMMAND</span>
               </h1>
             </div>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-3">
               <button
                 onClick={() => {
                   setCreateDraft({ ...emptyTournament, rules: [...emptyTournament.rules] });
                   setShowCreate(true);
                   requestAnimationFrame(() => setTimeout(() => document.getElementById("admin-create-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80));
                 }}
-                className="btn-primary px-5 py-2.5 font-display text-xs"
+                className="btn-primary min-h-11 px-3 py-2.5 font-display text-[10px] sm:px-5 sm:text-xs"
               >
                 + NEW TOURNAMENT
               </button>
-              <button onClick={handleReset} className="btn-ghost px-5 py-2.5 font-display text-xs">
+              <button onClick={handleReset} className="btn-ghost min-h-11 px-3 py-2.5 font-display text-[10px] sm:px-5 sm:text-xs">
                 RESET DATA
               </button>
             </div>
           </div>
         </motion.div>
 
-        <div className="mb-8 flex gap-1 overflow-x-auto border-b border-[#1a2134]">
-          {(["overview", "tournaments", "registrations", "payments", "withdrawals", "users", "matches"] as const).map((tb) => (
-            <button
-              key={tb}
-              onClick={() => setTab(tb)}
-              className={`px-5 py-3 font-body text-xs font-semibold tracking-[0.2em] transition-colors ${
-                tab === tb ? "text-cyan-400 border-b-2 border-cyan-400" : "text-slate-500 hover:text-slate-300"
-              }`}
-            >
-              {tb.toUpperCase()}
-            </button>
-          ))}
+        <div className="-mx-4 mb-8 overflow-x-auto border-b border-[#1a2134] px-4 sm:mx-0 sm:px-0">
+          <div className="flex min-w-max gap-1">
+            {(["overview", "tournaments", "registrations", "payments", "withdrawals", "users", "matches"] as const).map((tb) => (
+              <button
+                key={tb}
+                onClick={() => setTab(tb)}
+                className={`whitespace-nowrap px-4 py-3 font-body text-[10px] font-semibold tracking-[0.18em] transition-colors sm:px-5 sm:text-xs sm:tracking-[0.2em] ${
+                  tab === tb ? "border-b-2 border-cyan-400 text-cyan-400" : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {tb.toUpperCase()}
+              </button>
+            ))}
+          </div>
         </div>
 
         {tab === "overview" && (
@@ -451,37 +453,48 @@ export default function AdminPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  className="border border-[#1a2134] bg-[#0a0d16]/70"
+                  className="overflow-hidden border border-[#1a2134] bg-[#0a0d16]/70"
                 >
-                  <div className="flex items-center gap-4 px-5 py-4">
-                    <img src={t.image} alt={t.short} className="h-14 w-20 shrink-0 object-cover" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-display text-sm font-bold text-white">{t.short}</p>
-                        <span className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] text-slate-500">{t.status}</span>
+                  <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:gap-4 sm:px-5 sm:py-4">
+                    <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+                      <img src={t.image} alt={t.short} className="h-16 w-24 shrink-0 object-cover sm:h-14 sm:w-20" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-display text-sm font-bold text-white">{t.short}</p>
+                          <span className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] text-slate-500">{t.status}</span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 font-body text-[11px] text-slate-400 sm:mt-1 sm:block sm:text-xs">
+                          <p>
+                            <span className="text-cyan-400">{t.prizePool}</span>
+                          </p>
+                          <p>Entry {t.entryFee}</p>
+                          <p>
+                            {t.teamsJoined}/{t.teams} teams
+                          </p>
+                          <p>
+                            {t.date} {t.time}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-1 font-body text-xs text-slate-400">
-                        <span className="text-cyan-400">{t.prizePool}</span> · Entry {t.entryFee} · {t.teamsJoined}/{t.teams} teams · {t.date} {t.time}
-                      </p>
                     </div>
-                    <div className="flex shrink-0 gap-2">
-                      <button onClick={() => startEdit(t)} className="btn-ghost px-4 py-2 font-display text-[10px]">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:gap-2">
+                      <button onClick={() => startEdit(t)} className="btn-ghost min-h-10 px-3 py-2 font-display text-[10px]">
                         EDIT
                       </button>
-                      <button onClick={() => setRoomDraft({ tournamentId: t.id, roomId: "", password: "" })} className="btn-ghost px-4 py-2 font-display text-[10px]">
+                      <button onClick={() => setRoomDraft({ tournamentId: t.id, roomId: "", password: "" })} className="btn-ghost min-h-10 px-3 py-2 font-display text-[10px]">
                         ROOM
                       </button>
                       <button
                         onClick={() => setWinnerDraft({ tournamentId: t.id, winner: t.winner || t.short })}
-                        className="border border-amber-400/50 px-4 py-2 font-display text-[10px] text-amber-400 transition-colors hover:bg-amber-400/10"
+                        className="min-h-10 border border-amber-400/50 px-3 py-2 font-display text-[10px] text-amber-400 transition-colors hover:bg-amber-400/10"
                       >
-                        {t.winner ? "RE-DECLARE" : "DECLARE WINNER"}
+                        {t.winner ? "RE-DECLARE" : "DECLARE"}
                       </button>
                       <button
                         onClick={() => {
                           if (confirm(`Remove ${t.short}?`)) deleteTournament(t.id);
                         }}
-                        className="border border-[#1a2134] px-4 py-2 font-display text-[10px] text-slate-400 transition-colors hover:border-red-500/50 hover:text-red-400"
+                        className="min-h-10 border border-[#1a2134] px-3 py-2 font-display text-[10px] text-slate-400 transition-colors hover:border-red-500/50 hover:text-red-400"
                       >
                         DELETE
                       </button>
@@ -489,7 +502,7 @@ export default function AdminPage() {
                   </div>
 
                   {editingId === t.id && draft && (
-                    <div className="border-t border-[#1a2134] p-5">
+                    <div className="border-t border-[#1a2134] p-4 sm:p-5">
                       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
                           <label className={labelCls}>TOURNAMENT NAME</label>
@@ -577,12 +590,12 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-4 border-t border-[#1a2134] pt-4">
-                        <div className="flex gap-2">
-                          <button onClick={saveEdit} className="btn-primary px-6 py-2.5 font-display text-[11px]">
+                      <div className="mt-4 flex flex-col gap-3 border-t border-[#1a2134] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="grid grid-cols-2 gap-2 sm:flex">
+                          <button onClick={saveEdit} className="btn-primary min-h-10 px-6 py-2.5 font-display text-[11px]">
                             SAVE CHANGES
                           </button>
-                          <button onClick={cancelEdit} className="btn-ghost px-6 py-2.5 font-display text-[11px]">
+                          <button onClick={cancelEdit} className="btn-ghost min-h-10 px-6 py-2.5 font-display text-[11px]">
                             CANCEL
                           </button>
                         </div>
@@ -829,17 +842,17 @@ export default function AdminPage() {
                           NOTE: {p.note}
                         </p>
                       )}
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-primary px-4 py-2 font-display text-[10px]">
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-primary min-h-10 px-4 py-2 text-center font-display text-[10px]">
                           VIEW / FORWARD ON WHATSAPP
                         </a>
-                        <span className="font-body text-[9px] tracking-[0.15em] text-slate-600">PAID TO {p.upiId}</span>
+                        <span className="break-all font-body text-[9px] tracking-[0.15em] text-slate-600">PAID TO {p.upiId}</span>
                         {p.status === "PENDING VERIFICATION" && (
-                          <div className="ml-auto flex gap-2">
-                            <button onClick={() => verifyPayment(p.id, "verify")} className="border border-emerald-500/50 px-4 py-2 font-display text-[10px] text-emerald-400 transition-colors hover:bg-emerald-500/10">
+                          <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
+                            <button onClick={() => verifyPayment(p.id, "verify")} className="min-h-10 border border-emerald-500/50 px-4 py-2 font-display text-[10px] text-emerald-400 transition-colors hover:bg-emerald-500/10">
                               VERIFY
                             </button>
-                            <button onClick={() => verifyPayment(p.id, "reject")} className="border border-red-500/50 px-4 py-2 font-display text-[10px] text-red-400 transition-colors hover:bg-red-500/10">
+                            <button onClick={() => verifyPayment(p.id, "reject")} className="min-h-10 border border-red-500/50 px-4 py-2 font-display text-[10px] text-red-400 transition-colors hover:bg-red-500/10">
                               REJECT
                             </button>
                           </div>
@@ -936,19 +949,19 @@ export default function AdminPage() {
                               </span>
                             )}
                           </div>
-                          <p className="mt-0.5 font-body text-[10px] tracking-[0.1em] text-slate-500">
+                          <p className="mt-0.5 break-all font-body text-[10px] tracking-[0.1em] text-slate-500">
                             {u.email || "—"} · {u.phone || "no mobile"} · UID {u.uid} · {u.team}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <span className="rounded-sm border border-[#1a2134] bg-[#05060a] px-3 py-1.5 font-body text-[10px] tracking-[0.15em] text-slate-400">
                           {userRegs.length} REGISTRATIONS
                         </span>
                         <span className="rounded-sm border border-cyan-400/30 bg-cyan-400/5 px-3 py-1.5 font-body text-[10px] tracking-[0.1em] text-cyan-400">
                           {formatINR(u.wallet || 0)}
                         </span>
-                        <span className={`font-display text-xs text-cyan-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>▾</span>
+                        <span className={`ml-auto font-display text-xs text-cyan-400 transition-transform sm:ml-0 ${isOpen ? "rotate-180" : ""}`}>▾</span>
                       </div>
                     </button>
 
@@ -1073,7 +1086,7 @@ export default function AdminPage() {
 
         {tab === "matches" && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-body text-[11px] tracking-[0.2em] text-slate-400">
                 TOTAL MATCHES: <span className="font-bold text-cyan-400">{matches.length}</span>
               </p>
@@ -1082,7 +1095,7 @@ export default function AdminPage() {
                   setShowMatchCreate(true);
                   requestAnimationFrame(() => setTimeout(() => document.getElementById("admin-match-create-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80));
                 }}
-                className="btn-primary px-5 py-2.5 font-display text-[10px]"
+                className="btn-primary min-h-11 w-full px-5 py-2.5 font-display text-[10px] sm:w-auto"
               >
                 + NEW MATCH
               </button>
@@ -1122,11 +1135,11 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[#1a2134] pt-3 font-body text-[10px] tracking-[0.15em] text-slate-500">
+                  <div className="mt-3 flex flex-col gap-3 border-t border-[#1a2134] pt-3 font-body text-[10px] tracking-[0.15em] text-slate-500 sm:flex-row sm:flex-wrap sm:items-center">
                     <span>ROOM <span className="text-slate-300">{m.roomId || "TBD"}</span></span>
                     <span>PASS <span className="text-slate-300">{m.password || "TBD"}</span></span>
-                    <div className="ml-auto flex gap-2">
-                      <button onClick={() => openMatchEditor(m)} className="btn-primary px-4 py-1.5 font-display text-[9px]">EDIT / SCORES</button>
+                    <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
+                      <button onClick={() => openMatchEditor(m)} className="btn-primary min-h-10 px-4 py-1.5 font-display text-[9px]">EDIT / SCORES</button>
                       <button
                         onClick={() => {
                           if (confirm(`Remove match ${m.id}?`)) deleteMatch(m.id);
@@ -1158,9 +1171,9 @@ export default function AdminPage() {
 
             {matchDraft && (
               <div id="admin-match-editor" className="border border-cyan-400/40 bg-[#0a0d16]/90 p-5">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-display text-sm font-bold text-white">EDIT MATCH {matchDraft.id}</p>
-                  <button onClick={() => setMatchDraft(null)} className="btn-ghost px-4 py-2 font-display text-[10px]">CLOSE</button>
+                  <button onClick={() => setMatchDraft(null)} className="btn-ghost min-h-10 px-4 py-2 font-display text-[10px]">CLOSE</button>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
@@ -1258,23 +1271,23 @@ export default function AdminPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] ${
+                     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                      <span className={`w-fit rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] ${
                         w.status === "APPROVED" ? "border-emerald-500/40 text-emerald-400" : w.status === "REJECTED" ? "border-red-500/40 text-red-400" : "border-amber-400/40 text-amber-400"
                       }`}>
                         {w.status}
                       </span>
                       {w.status === "PENDING" && (
-                        <>
-                          <button onClick={() => processWithdrawal(w, "approve")} className="border border-emerald-500/50 px-4 py-2 font-display text-[10px] text-emerald-400 transition-colors hover:bg-emerald-500/10">
+                        <div className="grid grid-cols-2 gap-2 sm:flex">
+                          <button onClick={() => processWithdrawal(w, "approve")} className="min-h-10 border border-emerald-500/50 px-4 py-2 font-display text-[10px] text-emerald-400 transition-colors hover:bg-emerald-500/10">
                             APPROVE
                           </button>
-                          <button onClick={() => processWithdrawal(w, "reject")} className="border border-red-500/50 px-4 py-2 font-display text-[10px] text-red-400 transition-colors hover:bg-red-500/10">
+                          <button onClick={() => processWithdrawal(w, "reject")} className="min-h-10 border border-red-500/50 px-4 py-2 font-display text-[10px] text-red-400 transition-colors hover:bg-red-500/10">
                             REJECT
                           </button>
-                        </>
+                        </div>
                       )}
-                      {w.upiId && <span className="font-body text-[9px] tracking-[0.1em] text-slate-500">{w.upiId}</span>}
+                      {w.upiId && <span className="break-all font-body text-[9px] tracking-[0.1em] text-slate-500">{w.upiId}</span>}
                     </div>
                   </div>
                   {w.remarks && <p className="mt-3 border-t border-[#1a2134] pt-3 font-body text-xs italic text-slate-400">{w.remarks}</p>}

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { getTournament, getTournaments, getRegistrations, isRegistered, registerForTournament, unregisterFromTournament, refreshRegistrations } from "@/lib/store";
+import { TournamentCard } from "@/components/TournamentCard";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
 import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, type ApiRoom } from "@/lib/api";
@@ -207,11 +208,11 @@ export default function TournamentDetailPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      <div className="relative h-[60vh] min-h-[380px] w-full overflow-hidden">
+      <div className="relative h-[48vh] min-h-[280px] w-full overflow-hidden sm:h-[60vh] sm:min-h-[380px]">
         <img src={t.image} alt={t.short} className="h-full w-full object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#05060a]/60 via-[#05060a]/30 to-[#05060a]" />
         <div className="absolute inset-0 flex items-end">
-          <div className="mx-auto w-full max-w-[1200px] px-6 pb-10">
+          <div className="mx-auto w-full max-w-[1200px] px-4 pb-8 sm:px-6 sm:pb-10">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
               <div className="mb-3 flex flex-wrap items-center gap-3">
                 <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.15em] ${statusColor[t.status]}`}>
@@ -231,7 +232,7 @@ export default function TournamentDetailPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1200px] px-6 pb-24">
+      <div className="mx-auto max-w-[1200px] px-4 pb-20 sm:px-6 sm:pb-24">
         <div className="grid gap-6 lg:grid-cols-3">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -595,20 +596,13 @@ export default function TournamentDetailPage() {
           </motion.div>
         </div>
 
-        <div className="mt-20">
-          <h2 className="mb-8 text-center font-display text-2xl font-black tracking-wide text-white sm:text-3xl">
+        <div className="mt-14 sm:mt-20">
+          <h2 className="mb-6 text-center font-display text-xl font-black tracking-wide text-white sm:mb-8 sm:text-3xl">
             MORE <span className="text-cyan-400">EVENTS</span>
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {related.map((rt) => (
-              <a key={rt.id} href={`/tournaments/${rt.id}`} data-cursor="VIEW" className="holo-panel clip-corner-sm group relative overflow-hidden p-4">
-                <img src={rt.image} alt={rt.short} className="absolute inset-0 h-full w-full object-cover opacity-25 transition-transform duration-500 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0a0d16]/95" />
-                <div className="relative z-10 flex min-h-[120px] flex-col justify-end">
-                  <p className="font-display text-sm font-bold text-white">{rt.short}</p>
-                  <p className="mt-1 font-body text-[10px] tracking-[0.15em] text-cyan-400">{rt.prizePool} · {rt.date}</p>
-                </div>
-              </a>
+              <TournamentCard key={rt.id} t={rt} />
             ))}
           </div>
         </div>

@@ -1,0 +1,9 @@
+{
+  "name": "next-level-arena",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix cinematic-arena",
+    "build": "npm run build --prefix cinematic-arena",
+    "start": "npm run start --prefix cinematic-arena"
+  }
+}

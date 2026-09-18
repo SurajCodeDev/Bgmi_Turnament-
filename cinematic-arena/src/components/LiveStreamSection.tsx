@@ -30,13 +30,15 @@ export function LiveStreamSection() {
               <img src="/images/esports-live.jpg" alt="Live esports broadcast on a big screen" className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16]/80 via-transparent to-[#0a0d16]/30" />
               <div className="absolute left-4 top-4 flex items-center gap-2 rounded-sm border border-red-500/60 bg-[#05060a]/80 px-3 py-1.5">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-                <span className="font-body text-[10px] font-bold tracking-[0.25em] text-red-400">LIVE NOW</span>
+                <span className={`h-2 w-2 rounded-full ${live ? "animate-pulse bg-red-500" : "bg-cyan-400"}`} />
+                <span className={`font-body text-[10px] font-bold tracking-[0.25em] ${live ? "text-red-400" : "text-cyan-400"}`}>
+                  {live ? "LIVE NOW" : "UP NEXT"}
+                </span>
               </div>
               <div className="absolute bottom-4 left-4 right-4">
-                <p className="font-display text-lg font-black tracking-[0.15em] text-white sm:text-xl">{live?.tournament || "BGMI Championship Series"}</p>
+                <p className="font-display text-lg font-black tracking-[0.15em] text-white sm:text-xl">{live?.tournament || upcoming[0]?.tournament || "BGMI Championship Series"}</p>
                 <p className="mt-1 font-body text-xs tracking-[0.2em] text-slate-300">
-                  {live?.map || "ERANGEL"} · {live?.id || "MATCH 04"} · {live?.time || "08:30 PM"}
+                  {live?.map || upcoming[0]?.map || "ERANGEL"} · {live?.id || upcoming[0]?.id || "M01"} · {live?.time || upcoming[0]?.time || "08:30 PM"}
                 </p>
               </div>
             </div>

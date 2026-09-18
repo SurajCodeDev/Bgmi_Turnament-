@@ -8,8 +8,11 @@ export async function POST() {
   if (!admin || admin.role !== "admin") {
     return NextResponse.json({ ok: false, error: "Admin access required." }, { status: 403 });
   }
-  const seed = (await import("@/data/arena")).tournaments;
-  db.tournaments = seed;
+  const arena = await import("@/data/arena");
+  db.tournaments = arena.tournaments.map((t) => ({ ...t }));
+  db.matches = arena.matches.map((m) => ({ ...m, teams: (m.teams || []).map((team) => ({ ...team })) }));
+  db.notifications = arena.defaultNotifications.map((n) => ({ ...n }));
+  db.rooms = [];
   await writeDB(db);
-  return NextResponse.json({ ok: true, tournaments: db.tournaments });
+  return NextResponse.json({ ok: true, tournaments: db.tournaments, matches: db.matches });
 }

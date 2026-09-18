@@ -206,24 +206,17 @@ function normalizeShape(parsed: unknown): DBShape {
       claimed: !!r.claimed,
       status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
     }));
-  merged.tournaments = (merged.tournaments || []).map((t) => ({
+  merged.tournaments = seedTournaments.map((t) => ({
     ...t,
     tag: t.tag || undefined,
-    winner: t.winner || undefined,
+    winner: undefined,
   }));
-  const knownIds = new Set(merged.tournaments.map((t) => t.id));
-  for (const seedT of seedTournaments) {
-    if (!knownIds.has(seedT.id)) {
-      merged.tournaments.push(seedT);
-      knownIds.add(seedT.id);
-    }
-  }
   merged.payments = (Array.isArray(merged.payments) ? merged.payments : []).filter((p) => !LEGACY_DEMO_IDS.has(p.userId));
   merged.otps = (Array.isArray(merged.otps) ? merged.otps : []).filter((o) => !LEGACY_DEMO_IDS.has(o.userId));
   merged.withdrawals = (Array.isArray(merged.withdrawals) ? merged.withdrawals : []).filter((w) => !LEGACY_DEMO_IDS.has(w.userId));
-  merged.rooms = Array.isArray(merged.rooms) ? merged.rooms : [];
-  merged.notifications = Array.isArray(merged.notifications) ? merged.notifications : [];
-  merged.matches = Array.isArray(merged.matches) ? merged.matches : seedMatches;
+  merged.rooms = [];
+  merged.notifications = defaultNotifications.map((n) => ({ ...n }));
+  merged.matches = seedMatches.map((m) => ({ ...m, teams: (m.teams || []).map((t) => ({ ...t })) }));
   merged.transactions = (Array.isArray(merged.transactions) ? merged.transactions : []).filter((t) => !LEGACY_DEMO_IDS.has(t.userId));
   merged.disputes = Array.isArray(merged.disputes) ? merged.disputes : [];
   return merged;

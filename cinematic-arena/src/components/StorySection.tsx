@@ -156,10 +156,10 @@ function Scene05() {
   const x = useTransform(scrollYProgress, [0, 1], [80, -80]);
 
   const liveTeams = [
-    { name: "TEAM NOVA", points: 42 },
-    { name: "TEAM TITANS", points: 39 },
-    { name: "TEAM PHOENIX", points: 37 },
-    { name: "TEAM LEGACY", points: 31 },
+    { name: "TEAM NOVA", points: 0 },
+    { name: "TEAM TITANS", points: 0 },
+    { name: "TEAM PHOENIX", points: 0 },
+    { name: "TEAM LEGACY", points: 0 },
   ];
 
   return (
@@ -173,13 +173,13 @@ function Scene05() {
                 <span className="absolute h-2 w-2 animate-ping rounded-full bg-red-500" />
                 <span className="h-2 w-2 rounded-full bg-red-500" />
               </span>
-              <span className="font-display text-xs font-bold tracking-[0.3em] text-red-400">LIVE</span>
+              <span className="font-display text-xs font-bold tracking-[0.3em] text-cyan-400">UPCOMING</span>
             </div>
-            <span className="font-display text-xs font-bold tracking-[0.3em] text-white">MATCH 04</span>
+            <span className="font-display text-xs font-bold tracking-[0.3em] text-white">MATCH 01</span>
           </div>
           <div className="mb-6 flex items-center justify-between border-y border-[#1a2134] py-3">
             <span className="font-body text-sm font-semibold tracking-[0.2em] text-cyan-400">ERANGEL</span>
-            <span className="font-body text-xs text-slate-500">24:18</span>
+            <span className="font-body text-xs text-slate-500">12 OCT · 08:30 PM</span>
           </div>
           <div className="space-y-3">
             {liveTeams.map((t, i) => (

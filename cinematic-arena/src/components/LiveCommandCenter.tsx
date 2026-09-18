@@ -26,14 +26,22 @@ export function LiveCommandCenter() {
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-2 w-2 items-center justify-center">
-                  <span className="absolute h-2 w-2 animate-ping rounded-full bg-red-500" />
-                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  {liveMatch.status === "LIVE" ? (
+                    <>
+                      <span className="absolute h-2 w-2 animate-ping rounded-full bg-red-500" />
+                      <span className="h-2 w-2 rounded-full bg-red-500" />
+                    </>
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                  )}
                 </span>
                 <span className="font-display text-sm font-bold tracking-[0.3em] text-white">{liveMatch.id}</span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="font-body text-xs tracking-[0.2em] text-cyan-400">{liveMatch.map}</span>
-                <span className="font-display text-sm font-black text-red-400">{liveMatch.timer}</span>
+                <span className={`font-display text-sm font-black ${liveMatch.status === "LIVE" ? "text-red-400" : "text-cyan-400"}`}>
+                  {liveMatch.status === "LIVE" ? liveMatch.timer : "UPCOMING"}
+                </span>
               </div>
             </div>
 
@@ -104,7 +112,7 @@ export function LiveCommandCenter() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="font-display text-lg font-black text-white">{liveMatch.startTime}</span>
-                <span className="font-body text-xs text-slate-400">MIRAMAR</span>
+                <span className="font-body text-xs text-slate-400">12 OCT · ERANGEL</span>
               </div>
             </div>
           </motion.div>

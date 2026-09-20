@@ -52,7 +52,7 @@ export function ChampionsSection() {
           transition={{ delay: 0.6, duration: 0.8 }}
           className="mt-10"
         >
-          <p className="font-display text-5xl font-black text-amber-400 text-glow sm:text-6xl">₹5,00,000</p>
+          <p className="font-display text-5xl font-black text-amber-400 text-glow sm:text-6xl">₹20,000</p>
           <p className="mt-2 font-body text-xs tracking-[0.35em] text-slate-500">PRIZE POOL</p>
         </motion.div>
 

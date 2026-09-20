@@ -115,7 +115,7 @@ export default function LoginPage() {
           <div className="mt-8 grid max-w-md grid-cols-2 gap-3">
             {[
               { label: "LIVE MATCHES", value: "04" },
-              { label: "PRIZE POOL", value: "₹5,00,000" },
+              { label: "PRIZE POOL", value: "₹20,000" },
               { label: "VERIFIED PLAYERS", value: "512" },
               { label: "ACTIVE TEAMS", value: "128" },
             ].map((s, i) => (

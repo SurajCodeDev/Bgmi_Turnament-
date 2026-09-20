@@ -56,16 +56,23 @@ export default function ContactPage() {
 
           <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15 }} className="flex flex-col gap-4">
             {[
-              { label: "EMAIL", value: "support@nextlevelarena.in" },
-              { label: "TELEGRAM", value: "@NextLevelArenaSupport" },
-              { label: "DISCORD", value: "discord.gg/nextlevelarena" },
-              { label: "YOUTUBE", value: "youtube.com/@nextlevelarena" },
-              { label: "INSTAGRAM", value: "@nextlevelarena.esports" },
-            ].map((c, i) => (
-              <div key={c.label} className="holo-panel clip-corner-sm flex items-center justify-between p-5">
+              { label: "EMAIL", value: "ksuraj138@gmail.com", href: "mailto:ksuraj138@gmail.com" },
+              { label: "TELEGRAM", value: "@BESTCHEAT_VIP", href: "https://t.me/BESTCHEAT_VIP" },
+              { label: "WHATSAPP", value: "7015742792", href: "https://wa.me/917015742792" },
+              { label: "DISCORD", value: "predator_dark_devil", href: "https://discord.com/users/predator_dark_devil" },
+              { label: "YOUTUBE", value: "youtube.com/@nextlevelarena", href: "https://youtube.com/@nextlevelarena" },
+              { label: "INSTAGRAM", value: "@nextlevelarena.esports", href: "https://instagram.com/nextlevelarena.esports" },
+            ].map((c) => (
+              <a
+                key={c.label}
+                href={c.href}
+                target={c.href.startsWith("mailto:") ? undefined : "_blank"}
+                rel={c.href.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+                className="holo-panel clip-corner-sm flex items-center justify-between p-5 transition-colors hover:border-cyan-400/40"
+              >
                 <span className="font-body text-[10px] tracking-[0.3em] text-slate-500">{c.label}</span>
                 <span className="font-body text-sm font-semibold text-cyan-400">{c.value}</span>
-              </div>
+              </a>
             ))}
             <div className="holo-panel clip-corner-sm p-5">
               <p className="mb-2 font-body text-[10px] tracking-[0.3em] text-slate-500">DISPUTE REVIEW</p>

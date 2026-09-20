@@ -49,10 +49,12 @@ export function Footer() {
           <div>
             <p className="mb-4 font-body text-[10px] font-semibold tracking-[0.3em] text-slate-600">COMMUNITY</p>
             <div className="flex flex-col gap-2.5">
-              <a href="#" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Discord</a>
-              <a href="#" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Telegram</a>
-              <a href="#" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">YouTube</a>
-              <a href="#" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Instagram</a>
+              <a href="mailto:ksuraj138@gmail.com" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Email</a>
+              <a href="https://t.me/BESTCHEAT_VIP" target="_blank" rel="noopener noreferrer" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Telegram</a>
+              <a href="https://wa.me/917015742792" target="_blank" rel="noopener noreferrer" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">WhatsApp</a>
+              <a href="https://discord.com/users/predator_dark_devil" target="_blank" rel="noopener noreferrer" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Discord</a>
+              <a href="https://youtube.com/@nextlevelarena" target="_blank" rel="noopener noreferrer" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">YouTube</a>
+              <a href="https://instagram.com/nextlevelarena.esports" target="_blank" rel="noopener noreferrer" className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">Instagram</a>
             </div>
           </div>
         </div>

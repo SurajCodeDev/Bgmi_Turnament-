@@ -11,10 +11,10 @@ export default function ContactPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
+    const subject = encodeURIComponent(`NEXT LEVEL ARENA support — ${name.trim()}`);
+    const body = encodeURIComponent(`Name: ${name.trim()}\nEmail: ${email.trim()}\n\n${message.trim()}`);
+    window.location.href = `mailto:ksuraj138@gmail.com?subject=${subject}&body=${body}`;
     setSent(true);
-    setName("");
-    setEmail("");
-    setMessage("");
     setTimeout(() => setSent(false), 4000);
   };
 

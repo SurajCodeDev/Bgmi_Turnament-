@@ -50,6 +50,8 @@ export interface ApiTransaction {
 
 async function json<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
+    credentials: "include",
+    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     ...options,
   });
@@ -73,16 +75,16 @@ export async function apiLoginWithIdentifier(identifier: string, password: strin
 }
 
 export async function apiRegister(data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) {
-  return json<{ ok: boolean; error?: string; pendingUserId?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string[] }>("/api/auth/register", {
+  return json<{ ok: boolean; error?: string; pendingUserId?: string; mockOtp?: string | null; delivery?: "email" | "mock" | "failed"; sentTo?: string[] }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function apiSendOtp(identifier: string, purpose = "login") {
+export async function apiSendOtp(identifier: string, purpose = "login", userId?: string) {
   return json<{ ok: boolean; error?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string }>("/api/auth/otp/send", {
     method: "POST",
-    body: JSON.stringify({ identifier, purpose }),
+    body: JSON.stringify({ identifier, purpose, userId }),
   });
 }
 
@@ -95,6 +97,13 @@ export async function apiVerifyOtp(data: { userId?: string; identifier?: string;
 
 export async function apiLogout() {
   return json<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+}
+
+export async function apiResetPassword(identifier: string, otp: string, password: string) {
+  return json<{ ok: boolean; error?: string }>("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ identifier, otp, password }),
+  });
 }
 
 export async function apiMe() {

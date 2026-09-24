@@ -447,7 +447,7 @@ export const heroStats = [
   { value: 128, label: "TEAMS" },
   { value: 512, label: "PLAYERS" },
   { value: 20000, label: "PRIZE POOL", currency: true },
-  { value: 4, label: "LIVE MATCHES", pad: true },
+  { value: 0, label: "LIVE MATCHES", pad: true },
 ];
 
 export const modes = ["SOLO", "DUO", "SQUAD", "TDM", "CHAMPIONSHIP", "SCRIMS"];

@@ -79,7 +79,7 @@ export function ChampionsSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 1, duration: 0.6 }}
-          href="#tournaments"
+          href="/tournaments"
           data-cursor="ENTER"
           className="btn-primary mt-14 inline-block px-14 py-5 font-display text-sm"
         >

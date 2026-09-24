@@ -20,7 +20,13 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "User not found." }, { status: 404 });
 
     const identifiers = [user.email, user.phone].filter(Boolean);
-    const ok = await Promise.all(identifiers.map((i) => verifyOtp(user.id, i, otpCode, "register"))).then((rs) => rs.some(Boolean));
+    let ok = false;
+    for (const ident of identifiers) {
+      if (await verifyOtp(user.id, ident, otpCode, "register")) {
+        ok = true;
+        break;
+      }
+    }
     if (!ok) return NextResponse.json({ ok: false, error: OTP_MOCK ? "Invalid OTP." : "Invalid or expired OTP." }, { status: 400 });
 
     if (user.email) user.emailVerified = true;

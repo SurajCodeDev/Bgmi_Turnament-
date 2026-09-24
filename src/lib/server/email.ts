@@ -1,30 +1,27 @@
-import { Resend } from "resend";
+export type EmailSendResult = { ok: true } | { ok: false; error: string };
+
+function smtpEnabled(): boolean {
+  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+}
 
 export function emailDeliveryEnabled(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.OTP_EMAIL_FROM);
+  return smtpEnabled();
 }
 
 export function emailReachable(email: string): boolean {
   const address = String(email || "").trim().toLowerCase();
-  const domain = (process.env.OTP_EMAIL_TO_DOMAIN || "").toLowerCase().trim();
-  const testRecipient = (process.env.OTP_TEST_RECIPIENT || "").toLowerCase().trim();
-
-  if (testRecipient && address === testRecipient) return true;
-  if (domain) return address.endsWith("@" + domain);
-  return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address);
 }
 
-export async function sendOtpEmail(to: string, name: string, otp: string): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.OTP_EMAIL_FROM || "NEXT LEVEL ARENA <onboarding@resend.dev>";
-  if (!apiKey) return false;
-  try {
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
-      from,
-      to: [to],
-      subject: "NEXT LEVEL ARENA — Your OTP",
-      html: `<!DOCTYPE html>
+function fromAddress(): string {
+  const smtpUser = (process.env.SMTP_USER || "").trim();
+  if (process.env.OTP_EMAIL_FROM) return process.env.OTP_EMAIL_FROM;
+  if (smtpUser) return `NEXT LEVEL ARENA <${smtpUser}>`;
+  return "NEXT LEVEL ARENA <vaibhavseth020@gmail.com>";
+}
+
+function otpHtml(name: string, otp: string): string {
+  return `<!DOCTYPE html>
 <html>
   <body style="margin:0;background:#05060c;font-family:Arial,Helvetica,sans-serif">
     <div style="max-width:520px;margin:0 auto;padding:32px 20px">
@@ -46,10 +43,42 @@ export async function sendOtpEmail(to: string, name: string, otp: string): Promi
       </p>
     </div>
   </body>
-</html>`,
+</html>`;
+}
+
+export async function sendOtpEmail(to: string, name: string, otp: string): Promise<EmailSendResult> {
+  if (!smtpEnabled()) {
+    return {
+      ok: false,
+      error: "Gmail SMTP is not configured. Set SMTP_USER=vaibhavseth020@gmail.com and SMTP_PASS on Vercel.",
+    };
+  }
+  const user = (process.env.SMTP_USER || "").trim();
+  const pass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT || 587);
+  try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
     });
-    return !error;
-  } catch {
-    return false;
+    await transporter.sendMail({
+      from: fromAddress(),
+      to,
+      replyTo: user,
+      subject: "NEXT LEVEL ARENA — Your OTP",
+      html: otpHtml(name, otp),
+      text: `Your NEXT LEVEL ARENA OTP is ${otp}. It expires in 10 minutes.`,
+    });
+    return { ok: true };
+  } catch (err) {
+    console.error("OTP email send failed:", err);
+    return {
+      ok: false,
+      error: "Gmail SMTP failed. Login as vaibhavseth020@gmail.com, create an App Password, then Redeploy.",
+    };
   }
 }

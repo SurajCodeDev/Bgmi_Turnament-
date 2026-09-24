@@ -42,7 +42,7 @@ export function Hero() {
             <span className="absolute h-2 w-2 animate-ping rounded-full bg-red-500" />
             <span className="h-2 w-2 rounded-full bg-red-500" />
           </span>
-          <span className="section-label">LIVE TOURNAMENTS · REAL-TIME LEADERBOARDS</span>
+          <span className="section-label">UPCOMING TOURNAMENTS · REAL PRIZE POOLS</span>
         </motion.div>
 
         <motion.h1

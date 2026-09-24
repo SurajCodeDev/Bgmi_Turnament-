@@ -2,13 +2,6 @@ import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
-function makeRef(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
-  let out = "";
-  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-
 export async function POST(req: Request) {
   const { amount, upiTxnRef, note } = await req.json();
   const n = Math.floor(Number(amount) || 0);
@@ -22,7 +15,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
 
-  const txnRef = String(upiTxnRef || makeRef()).trim();
+  const txnRef = String(upiTxnRef || "").trim();
+  if (!txnRef) {
+    return NextResponse.json({ ok: false, error: "Enter your UPI transaction reference." }, { status: 400 });
+  }
   const payment = {
     id: `pay-${Date.now()}`,
     userId: user.id,
@@ -36,6 +32,14 @@ export async function POST(req: Request) {
     type: "TOPUP" as const,
   };
   db.payments.push(payment);
+  db.notifications.push({
+    id: `nt-${Date.now()}`,
+    type: "PAYMENT",
+    message: `Wallet top-up of ₹${n.toLocaleString("en-IN")} submitted. Awaiting admin verification.`,
+    date: new Date().toISOString().slice(0, 10),
+    read: false,
+    userId: user.id,
+  });
   await writeDB(db);
 
   return NextResponse.json({ ok: true, balance: user.wallet, payment });

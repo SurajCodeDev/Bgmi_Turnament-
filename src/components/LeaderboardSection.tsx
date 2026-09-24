@@ -1,7 +1,7 @@
 "use client";
 
 import { leaderboard } from "@/data/arena";
-import { getMatches } from "@/lib/store";
+import { getMatches, getTeams } from "@/lib/store";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
 
 const rankStyle = (i: number) => {
@@ -36,6 +36,7 @@ function computeLeaderboard() {
 export function LeaderboardSection() {
   useStoreRefresh();
   const rows = computeLeaderboard();
+  const teams = getTeams();
   return (
     <section id="leaderboard" className="relative py-24">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#070a12] to-transparent" />
@@ -57,10 +58,12 @@ export function LeaderboardSection() {
           </div>
 
           <div className="space-y-2">
-            {rows.map((t, i) => (
+            {rows.map((t, i) => {
+              const teamId = teams.find((x) => x.name === t.name)?.id;
+              return (
               <a
                 key={t.name}
-                href="/#leaderboard"
+                href={teamId ? `/teams/${teamId}` : "/tournaments"}
                 data-cursor="VIEW"
                 className={`grid grid-cols-[40px_1fr_60px_60px_80px] items-center gap-2 border bg-[#0a0d16]/70 px-4 py-4 transition-colors hover:border-cyan-400/40 sm:grid-cols-[50px_1fr_90px_90px_120px] ${
                   i < 3 ? `border ${rankStyle(i)}` : "border-[#1a2134]"
@@ -82,7 +85,8 @@ export function LeaderboardSection() {
                 <span className="text-right font-body text-xs text-slate-400">{t.wins}</span>
                 <span className="text-right font-display text-base font-black text-white">{t.points}</span>
               </a>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

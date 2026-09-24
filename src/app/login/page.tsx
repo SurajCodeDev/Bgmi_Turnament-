@@ -114,7 +114,7 @@ export default function LoginPage() {
 
           <div className="mt-8 grid max-w-md grid-cols-2 gap-3">
             {[
-              { label: "LIVE MATCHES", value: "04" },
+              { label: "LIVE MATCHES", value: "00" },
               { label: "PRIZE POOL", value: "₹20,000" },
               { label: "VERIFIED PLAYERS", value: "512" },
               { label: "ACTIVE TEAMS", value: "128" },
@@ -272,14 +272,22 @@ export default function LoginPage() {
               )}
 
               {mode === "password" && (
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary group flex w-full items-center justify-center gap-2 px-6 py-3.5 font-display text-sm"
-                >
-                  {loading ? "AUTHENTICATING..." : "ENTER ARENA"}
-                  {!loading && <span className="transition-transform group-hover:translate-x-1">→</span>}
-                </button>
+                <>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn-primary group flex w-full items-center justify-center gap-2 px-6 py-3.5 font-display text-sm"
+                  >
+                    {loading ? "AUTHENTICATING..." : "ENTER ARENA"}
+                    {!loading && <span className="transition-transform group-hover:translate-x-1">→</span>}
+                  </button>
+                  <a
+                    href="/forgot-password"
+                    className="text-center font-body text-[10px] tracking-[0.2em] text-slate-500 hover:text-cyan-400"
+                  >
+                    FORGOT PASSWORD?
+                  </a>
+                </>
               )}
 
               {error && (

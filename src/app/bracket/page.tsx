@@ -63,7 +63,7 @@ export default function BracketPage() {
         </div>
 
         <div className="mt-16 text-center">
-          <a href="#tournaments" className="btn-primary inline-block px-10 py-4 font-display text-sm">VIEW TOURNAMENTS</a>
+          <a href="/tournaments" className="btn-primary inline-block px-10 py-4 font-display text-sm">VIEW TOURNAMENTS</a>
         </div>
       </div>
     </main>

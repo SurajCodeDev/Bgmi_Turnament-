@@ -85,24 +85,31 @@ export function LiveCommandCenter() {
             className="holo-panel scanline clip-corner p-6"
           >
             <div className="mb-5 flex items-center justify-between">
-              <span className="font-display text-xs font-bold tracking-[0.3em] text-white">KILL FEED</span>
-              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">REALTIME</span>
+              <span className="font-display text-xs font-bold tracking-[0.3em] text-white">MATCH INTEL</span>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">PRE-MATCH</span>
             </div>
             <div className="space-y-3">
-              {liveMatch.killFeed.map((k, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.08 }}
-                  className="flex items-center justify-between font-body text-xs"
-                >
-                  <span className="font-semibold text-cyan-400">{k.killer}</span>
-                  <span className="text-slate-600">✕ {k.weapon}</span>
-                  <span className="font-semibold text-red-400">{k.victim}</span>
-                </motion.div>
-              ))}
+              {liveMatch.status === "LIVE" ? (
+                liveMatch.killFeed.map((k, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                    className="flex items-center justify-between font-body text-xs"
+                  >
+                    <span className="font-semibold text-cyan-400">{k.killer}</span>
+                    <span className="text-slate-600">✕ {k.weapon}</span>
+                    <span className="font-semibold text-red-400">{k.victim}</span>
+                  </motion.div>
+                ))
+              ) : (
+                <>
+                  <p className="font-body text-xs leading-relaxed text-slate-400">No live kill feed yet. Room ID and password drop 30 minutes before match start.</p>
+                  <p className="font-body text-xs leading-relaxed text-slate-500">Registered squads get notified in dashboard as soon as the custom room goes live.</p>
+                </>
+              )}
             </div>
 
             <div className="mt-8 border-t border-[#1a2134] pt-5">

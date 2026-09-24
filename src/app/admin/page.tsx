@@ -98,27 +98,41 @@ export default function AdminPage() {
   }, [user?.id, user?.role]);
 
   useEffect(() => {
-    apiGetPayments()
-      .then((res) => {
-        if (res.ok) setPayments(res.payments);
-      })
-      .catch(() => {});
-    apiGetPaymentConfig()
-      .then(setPayConfig)
-      .catch(() => {});
-    apiGetWithdrawals()
-      .then((res) => {
-        if (res.ok) setWithdrawals(res.withdrawals);
-      })
-      .catch(() => {});
-    apiGetMatches()
-      .then((ms) => setMatches(ms))
-      .catch(() => {});
-    if (user?.role === "admin") {
-      apiGetUsers()
-        .then((us) => setUsers(us))
+    if (user?.role !== "admin") return;
+    let cancelled = false;
+    const load = () => {
+      apiGetPayments()
+        .then((res) => {
+          if (!cancelled && res.ok) setPayments(res.payments);
+        })
         .catch(() => {});
-    }
+      apiGetWithdrawals()
+        .then((res) => {
+          if (!cancelled && res.ok) setWithdrawals(res.withdrawals);
+        })
+        .catch(() => {});
+      apiGetMatches()
+        .then((ms) => {
+          if (!cancelled) setMatches(ms);
+        })
+        .catch(() => {});
+      apiGetUsers()
+        .then((us) => {
+          if (!cancelled) setUsers(us);
+        })
+        .catch(() => {});
+    };
+    apiGetPaymentConfig()
+      .then((cfg) => {
+        if (!cancelled) setPayConfig(cfg);
+      })
+      .catch(() => {});
+    load();
+    const timer = window.setInterval(load, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [refresh, user?.role]);
 
   if (loading) return null;
@@ -833,7 +847,13 @@ export default function AdminPage() {
                             </p>
                           </div>
                         </div>
-                        <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/5 px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] text-emerald-400">
+                        <span className={`rounded-sm border px-2 py-0.5 font-body text-[9px] font-semibold tracking-[0.2em] ${
+                          p.status === "VERIFIED"
+                            ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-400"
+                            : p.status === "REJECTED"
+                              ? "border-red-500/40 bg-red-500/5 text-red-400"
+                              : "border-amber-400/40 bg-amber-400/5 text-amber-400"
+                        }`}>
                           {p.status}
                         </span>
                       </div>

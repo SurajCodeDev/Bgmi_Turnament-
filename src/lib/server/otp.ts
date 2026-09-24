@@ -29,21 +29,30 @@ export async function findByIdentifier(identifier: string) {
   const db = await readDB();
   const id = String(identifier || "").trim().toLowerCase();
   const user = db.users.find(
-    (u) => u.email.toLowerCase() === id || u.phone === id
+    (u) =>
+      u.email.toLowerCase() === id ||
+      u.phone === id ||
+      (u.username ? u.username.toLowerCase() === id : false)
   );
   return { db, user };
 }
 
 export async function issueOtp(userId: string, identifier: string, purpose: string) {
   const db = await readDB();
+  const now = Date.now();
+  for (const record of db.otps) {
+    if (record.userId === userId && record.purpose === purpose && !record.consumed) {
+      record.consumed = true;
+    }
+  }
   const otp = randomOtp();
   db.otps.push({
-    id: `otp-${Date.now()}`,
+    id: `otp-${now}`,
     userId,
-    identifier,
+    identifier: String(identifier || "").trim().toLowerCase(),
     otp,
     purpose,
-    expiresAt: Date.now() + OTP_EXPIRY_MS,
+    expiresAt: now + OTP_EXPIRY_MS,
     consumed: false,
   });
   await writeDB(db);

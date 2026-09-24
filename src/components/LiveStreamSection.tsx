@@ -14,7 +14,7 @@ export function LiveStreamSection() {
         <div className="mb-14 flex flex-col items-center text-center">
           <span className="section-label mb-3">LIVE BROADCAST</span>
           <h2 className="font-display text-3xl font-black tracking-wide text-white sm:text-5xl">
-            WATCH <span className="text-red-400">LIVE</span>
+            WATCH <span className={live ? "text-red-400" : "text-cyan-400"}>{live ? "LIVE" : "NEXT"}</span>
           </h2>
         </div>
 

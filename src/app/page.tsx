@@ -8,7 +8,6 @@ import { LiveCommandCenter } from "@/components/LiveCommandCenter";
 import { LeaderboardSection } from "@/components/LeaderboardSection";
 import { ChampionsSection } from "@/components/ChampionsSection";
 import { NewsSection } from "@/components/NewsSection";
-import { Footer } from "@/components/Footer";
 
 export default function Home() {
   return (
@@ -23,7 +22,6 @@ export default function Home() {
       <LeaderboardSection />
       <NewsSection />
       <ChampionsSection />
-      <Footer />
     </main>
   );
 }

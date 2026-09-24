@@ -74,8 +74,8 @@ export function MidnightHuntersBanner() {
                   </div>
                 ))}
               </div>
-              <a href="#tournaments" data-cursor="ENTER" className="btn-primary block px-6 py-3 text-center font-display text-xs">
-                ENTER MIDNIGHT CUP
+              <a href="/tournaments" data-cursor="ENTER" className="btn-primary block px-6 py-3 text-center font-display text-xs">
+                BROWSE TOURNAMENTS
               </a>
             </div>
           </motion.div>

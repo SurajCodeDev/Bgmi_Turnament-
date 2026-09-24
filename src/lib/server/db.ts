@@ -119,6 +119,35 @@ const BLOB_KEY = "nla-db/db.json";
 const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 let memDB: DBShape | null = null;
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+function enqueueWrite<T>(fn: () => Promise<T>): Promise<T> {
+  const next = writeQueue.then(fn, fn);
+  writeQueue = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
+}
+
+function unionByKey<T>(base: T[] | undefined, overlay: T[] | undefined, keyFn: (item: T) => string): T[] {
+  const map = new Map<string, T>();
+  for (const item of base || []) map.set(keyFn(item), item);
+  for (const item of overlay || []) map.set(keyFn(item), item);
+  return [...map.values()];
+}
+
+function mergeLiveState(latest: DBShape, incoming: DBShape): DBShape {
+  return {
+    ...incoming,
+    users: unionByKey(latest.users, incoming.users, (u) => u.id),
+    payments: unionByKey(latest.payments, incoming.payments, (p) => p.id),
+    withdrawals: unionByKey(latest.withdrawals, incoming.withdrawals, (w) => w.id),
+    transactions: unionByKey(latest.transactions, incoming.transactions, (t) => t.id),
+    notifications: unionByKey(latest.notifications, incoming.notifications, (n) => n.id),
+    otps: unionByKey(latest.otps, incoming.otps, (o) => o.id),
+  };
+}
 
 // --- Secret owner/admin account (only credentials to be used for admin access) ---
 export const ADMIN_USERNAME = "adminsk";
@@ -169,6 +198,14 @@ function defaultDB(): DBShape {
   return JSON.parse(JSON.stringify(seedDB));
 }
 
+function mergeById<T extends { id: string }>(stored: T[] | undefined, seed: T[]): T[] {
+  const current = Array.isArray(stored) ? stored : [];
+  if (!current.length) return seed.map((item) => ({ ...item }));
+  const seen = new Set(current.map((item) => item.id));
+  const extras = seed.filter((item) => !seen.has(item.id)).map((item) => ({ ...item }));
+  return extras.length ? [...current, ...extras] : current;
+}
+
 function normalizeShape(parsed: unknown): DBShape {
   const base = defaultDB();
   const data = (parsed || {}) as Partial<DBShape>;
@@ -188,7 +225,6 @@ function normalizeShape(parsed: unknown): DBShape {
       emailVerified: !!u.emailVerified,
       phoneVerified: !!u.phoneVerified,
     }));
-  // Guarantee the secret owner/admin account always exists and keeps its credentials.
   const adminSeed = seedUsers[0];
   const adminIndex = merged.users.findIndex(
     (u) => u.role === "admin" && (u.id === adminSeed.id || u.username === ADMIN_USERNAME)
@@ -206,17 +242,21 @@ function normalizeShape(parsed: unknown): DBShape {
       claimed: !!r.claimed,
       status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
     }));
-  merged.tournaments = seedTournaments.map((t) => ({
+  merged.tournaments = mergeById(data.tournaments, seedTournaments).map((t) => ({
     ...t,
     tag: t.tag || undefined,
-    winner: undefined,
   }));
   merged.payments = (Array.isArray(merged.payments) ? merged.payments : []).filter((p) => !LEGACY_DEMO_IDS.has(p.userId));
   merged.otps = (Array.isArray(merged.otps) ? merged.otps : []).filter((o) => !LEGACY_DEMO_IDS.has(o.userId));
   merged.withdrawals = (Array.isArray(merged.withdrawals) ? merged.withdrawals : []).filter((w) => !LEGACY_DEMO_IDS.has(w.userId));
-  merged.rooms = [];
-  merged.notifications = defaultNotifications.map((n) => ({ ...n }));
-  merged.matches = seedMatches.map((m) => ({ ...m, teams: (m.teams || []).map((t) => ({ ...t })) }));
+  merged.rooms = Array.isArray(data.rooms) ? data.rooms : [];
+  merged.notifications = Array.isArray(data.notifications) && data.notifications.length
+    ? data.notifications
+    : defaultNotifications.map((n) => ({ ...n }));
+  merged.matches = mergeById(
+    (data.matches || []).map((m) => ({ ...m, teams: (m.teams || []).map((t) => ({ ...t })) })),
+    seedMatches.map((m) => ({ ...m, teams: (m.teams || []).map((t) => ({ ...t })) }))
+  );
   merged.transactions = (Array.isArray(merged.transactions) ? merged.transactions : []).filter((t) => !LEGACY_DEMO_IDS.has(t.userId));
   merged.disputes = Array.isArray(merged.disputes) ? merged.disputes : [];
   return merged;
@@ -246,11 +286,19 @@ async function writeBlobText(text: string) {
 }
 
 export async function readDB(): Promise<DBShape> {
+  if (USE_BLOB) {
+    const raw = await readBlobText();
+    if (raw) {
+      memDB = normalizeShape(JSON.parse(raw) as unknown);
+      return memDB;
+    }
+    const fresh = defaultDB();
+    await writeDB(fresh);
+    return fresh;
+  }
   if (memDB) return memDB;
   let raw: string | null = null;
-  if (USE_BLOB) {
-    raw = await readBlobText();
-  } else if (fs.existsSync(DB_PATH)) {
+  if (fs.existsSync(DB_PATH)) {
     raw = fs.readFileSync(DB_PATH, "utf-8");
   }
   if (raw) {
@@ -263,16 +311,26 @@ export async function readDB(): Promise<DBShape> {
 }
 
 export async function writeDB(db: DBShape) {
-  memDB = db;
-  const text = JSON.stringify(db);
-  if (USE_BLOB) {
-    await writeBlobText(text);
-  } else {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+  return enqueueWrite(async () => {
+    let outgoing = db;
+    if (USE_BLOB) {
+      const raw = await readBlobText();
+      if (raw) {
+        const latest = normalizeShape(JSON.parse(raw) as unknown);
+        outgoing = mergeLiveState(latest, db);
+      }
     }
-    fs.writeFileSync(DB_PATH, text, "utf-8");
-  }
+    memDB = outgoing;
+    const text = JSON.stringify(outgoing);
+    if (USE_BLOB) {
+      await writeBlobText(text);
+    } else {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(DB_PATH, text, "utf-8");
+    }
+  });
 }
 
 export async function resetDB() {

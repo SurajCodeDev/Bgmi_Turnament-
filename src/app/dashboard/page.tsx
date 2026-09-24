@@ -54,31 +54,34 @@ export default function DashboardPage() {
   }, [user, refresh]);
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    let cancelled = false;
+    const load = () => {
       apiGetPayments()
         .then((res) => {
-          if (res.ok) setPayments(res.payments.filter((p) => p.userId === user.id));
+          if (!cancelled && res.ok) setPayments(res.payments.filter((p) => p.userId === user.id));
         })
         .catch(() => {});
       apiGetWithdrawals()
         .then((res) => {
-          if (res.ok) setWithdrawals(res.withdrawals.filter((w) => w.userId === user.id));
+          if (!cancelled && res.ok) setWithdrawals(res.withdrawals.filter((w) => w.userId === user.id));
         })
         .catch(() => {});
-    }
-  }, [user, refresh]);
-
-  useEffect(() => {
-    if (user) {
       apiGetWallet()
         .then((res) => {
-          if (res.ok) {
+          if (!cancelled && res.ok) {
             setBalance(res.balance);
             setTransactions(res.transactions);
           }
         })
         .catch(() => {});
-    }
+    };
+    load();
+    const timer = window.setInterval(load, 8000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [user, refresh]);
 
   if (loading) return null;
@@ -108,15 +111,22 @@ export default function DashboardPage() {
       showToast("ENTER A VALID AMOUNT");
       return;
     }
-    const res = await apiTopUp(n, upiTxnRef, payNote);
+    if (!upiTxnRef.trim()) {
+      showToast("ENTER UPI TRANSACTION REF");
+      return;
+    }
+    const res = await apiTopUp(n, upiTxnRef.trim(), payNote);
     if (res.ok) {
       setBalance(res.balance);
       setTopupOpen(false);
       setLastPayment(res.payment || null);
+      if (res.payment) {
+        setPayments((prev) => [res.payment!, ...prev.filter((p) => p.id !== res.payment!.id)]);
+      }
       setTopupAmount("");
       setUpiTxnRef("");
       setPayNote("");
-      showToast("PAYMENT SUBMITTED FOR VERIFICATION");
+      showToast("PAYMENT SENT TO ADMIN FOR VERIFY");
     } else {
       showToast(res.error || "TOP-UP FAILED");
     }
@@ -302,7 +312,7 @@ export default function DashboardPage() {
                 {payments.slice(0, 6).map((p) => (
                   <div key={p.id} className="flex items-center justify-between gap-3 border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
                     <div className="min-w-0">
-                      <p className="font-body text-xs text-slate-300">{p.type === "ENTRY" ? (p.tournamentName || "Entry") : "Wallet Top-up"}</p>
+                            <p className="font-body text-xs text-slate-300">{p.type === "ENTRY" ? (p.tournamentName || "Entry fee") : "Wallet Top-up"}</p>
                       <p className="font-body text-[9px] tracking-[0.15em] text-slate-600">{p.upiTxnRef}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -488,7 +498,7 @@ export default function DashboardPage() {
                   type="text"
                   value={upiTxnRef}
                   onChange={(e) => setUpiTxnRef(e.target.value)}
-                  placeholder="UPI Transaction Ref (optional)"
+                  placeholder="UPI Transaction Ref (required)"
                   className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-2.5 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
                 />
                 <input

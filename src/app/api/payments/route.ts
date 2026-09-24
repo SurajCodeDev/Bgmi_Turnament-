@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function makeRef(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
   let out = "";
@@ -19,8 +22,16 @@ export async function GET() {
     user.role === "admin"
       ? db.payments
       : db.payments.filter((p) => p.userId === user.id);
-  const sorted = [...payments].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  return NextResponse.json({ ok: true, payments: sorted });
+  const sorted = [...payments].sort((a, b) => {
+    const pendingA = a.status === "PENDING VERIFICATION" ? 0 : 1;
+    const pendingB = b.status === "PENDING VERIFICATION" ? 0 : 1;
+    if (pendingA !== pendingB) return pendingA - pendingB;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
+  return NextResponse.json(
+    { ok: true, payments: sorted },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
 
 export async function POST(req: Request) {

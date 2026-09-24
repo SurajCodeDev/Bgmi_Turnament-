@@ -24,7 +24,7 @@ export function TournamentSection() {
             UPCOMING <span className="text-cyan-400">EVENTS</span>
           </h2>
           <p className="mt-3 max-w-xl font-body text-sm leading-relaxed text-slate-400 sm:mt-4">
-            Premium BGMI competitive events with verified players, live scoring and massive prize pools.
+            Community BGMI events with verified players, live scoring and real prize pools.
             Free and paid entry tournaments available.
           </p>
         </div>

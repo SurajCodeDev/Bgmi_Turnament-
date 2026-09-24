@@ -183,7 +183,11 @@ export default function TournamentDetailPage() {
       alert("Enter a valid amount.");
       return;
     }
-    const res = await apiTopUp(n);
+    if (!upiTxnRef.trim()) {
+      alert("Enter your UPI transaction reference after paying.");
+      return;
+    }
+    const res = await apiTopUp(n, upiTxnRef.trim(), upiNote);
     if (res.ok) {
       setTopupOpen(false);
       setTopupAmount("");

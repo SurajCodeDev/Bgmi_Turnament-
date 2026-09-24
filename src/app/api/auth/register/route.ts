@@ -30,45 +30,63 @@ export async function POST(req: Request) {
   const exists = db.users.find(
     (u) => (cleanEmail && u.email.toLowerCase() === cleanEmail) || (cleanPhone && u.phone === cleanPhone)
   );
-  if (exists) {
+  if (exists && (exists.emailVerified || exists.phoneVerified)) {
     return NextResponse.json({ ok: false, error: "An account with this email or mobile already exists." }, { status: 409 });
   }
 
-  const user = {
-    id: `u-${Date.now()}`,
-    name: String(name).trim(),
-    email: cleanEmail,
-    phone: cleanPhone,
-    password: String(password),
-    role: "player" as const,
-    uid: String(uid).trim(),
-    team: String(team || "Team Solo").trim(),
-    wallet: 0,
-    emailVerified: false,
-    phoneVerified: false,
-    createdAt: new Date().toISOString(),
-  };
+  const user = exists && !exists.emailVerified && !exists.phoneVerified
+    ? exists
+    : {
+        id: `u-${Date.now()}`,
+        name: String(name).trim(),
+        email: cleanEmail,
+        phone: cleanPhone,
+        password: String(password),
+        role: "player" as const,
+        uid: String(uid).trim(),
+        team: String(team || "Team Solo").trim(),
+        wallet: 0,
+        emailVerified: false,
+        phoneVerified: false,
+        createdAt: new Date().toISOString(),
+      };
 
-  db.users.push(user);
-  await writeDB(db);
-
-  const otp = await issueOtp(user.id, cleanEmail || cleanPhone, "register");
-  const mockOtps: Record<string, string> = {};
-
-  let deliveredEmail = false;
-  if (cleanEmail && emailDeliveryEnabled() && emailReachable(cleanEmail)) {
-    deliveredEmail = await sendOtpEmail(cleanEmail, user.name, otp);
+  if (!exists) {
+    db.users.push(user);
+    await writeDB(db);
+  } else {
+    user.name = String(name).trim();
+    user.email = cleanEmail || user.email;
+    user.phone = cleanPhone || user.phone;
+    user.password = String(password);
+    user.uid = String(uid).trim();
+    user.team = String(team || user.team || "Team Solo").trim();
+    await writeDB(db);
   }
 
-  if (cleanEmail && !deliveredEmail && OTP_MOCK) mockOtps.email = otp;
-  if (cleanPhone && !deliveredEmail && OTP_MOCK) mockOtps.phone = otp;
+  const otpTarget = cleanEmail || cleanPhone;
+  const otp = await issueOtp(user.id, otpTarget, "register");
+
+  let deliveredEmail = false;
+  let deliveryError = "";
+  if (cleanEmail) {
+    if (!emailDeliveryEnabled()) {
+      deliveryError = "Gmail SMTP is not configured. Set SMTP_USER and SMTP_PASS on Vercel.";
+    } else if (!emailReachable(cleanEmail)) {
+      deliveryError = "OTP email is restricted for this address.";
+    } else {
+      const sent = await sendOtpEmail(cleanEmail, user.name, otp);
+      deliveredEmail = sent.ok;
+      if (!sent.ok) deliveryError = sent.error;
+    }
+  }
 
   return NextResponse.json({
     ok: true,
     pendingUserId: user.id,
     sentTo: [cleanEmail || "", cleanPhone || ""].filter(Boolean),
-    delivery: deliveredEmail ? "email" : "mock",
+    delivery: deliveredEmail ? "email" : OTP_MOCK ? "mock" : "failed",
     mockOtp: OTP_MOCK && !deliveredEmail ? otp : null,
-    mockOtps,
+    error: deliveredEmail ? undefined : deliveryError || undefined,
   });
 }

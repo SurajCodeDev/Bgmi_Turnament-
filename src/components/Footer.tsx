@@ -24,7 +24,7 @@ export function Footer() {
             <p className="mb-4 font-body text-[10px] font-semibold tracking-[0.3em] text-slate-600">NAVIGATION</p>
             <div className="flex flex-col gap-2.5">
               {navLinks.map((l) => (
-                <a key={l.href} href={l.href} className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">
+                <a key={l.href} href={l.href.startsWith("#") ? `/${l.href}` : l.href} className="font-body text-xs tracking-[0.15em] text-slate-400 transition-colors hover:text-cyan-400">
                   {l.label}
                 </a>
               ))}

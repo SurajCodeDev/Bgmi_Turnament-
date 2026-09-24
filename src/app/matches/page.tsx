@@ -60,7 +60,7 @@ function MatchCard({ m }: { m: Match }) {
       <div className="flex items-center justify-between">
         <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">MAP · {m.map} · {m.mode}</span>
         {isLive && m.roomId && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">ROOM <span className="text-slate-300">{m.roomId}</span></span>}
-        {isLive && <a href="#live" className="font-display text-[10px] font-bold tracking-[0.2em] text-red-400">WATCH LIVE →</a>}
+        {isLive && <a href="/#live" className="font-display text-[10px] font-bold tracking-[0.2em] text-red-400">WATCH LIVE →</a>}
         {isDone && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">RESULTS PUBLISHED</span>}
         {!isLive && !isDone && <span className="font-body text-[10px] tracking-[0.2em] text-slate-500">ROOM TBD</span>}
       </div>

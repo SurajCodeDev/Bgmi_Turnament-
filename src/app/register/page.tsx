@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 
 export default function RegisterPage() {
-  const { register, verifyRegistration, user } = useAuth();
+  const { register, verifyRegistration, sendOtp, user } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState("");
@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [pendingUserId, setPendingUserId] = useState<string | undefined>(undefined);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   if (user) {
     router.replace(user.role === "admin" ? "/admin" : "/dashboard");
@@ -61,7 +62,25 @@ export default function RegisterPage() {
     setPendingUserId(res.pendingUserId);
     setMockOtp(res.mockOtp || null);
     setEmailSent(res.delivery === "email");
+    if (res.error) setError(res.error);
     setStep(2);
+  };
+
+  const handleResendOtp = async () => {
+    setError("");
+    if (!email.trim()) {
+      setError("Enter your email to resend OTP.");
+      return;
+    }
+    setResending(true);
+    const res = await sendOtp(email.trim(), "register", pendingUserId);
+    setResending(false);
+    if (!res.ok) {
+      setError(res.error || "Failed to resend OTP.");
+      return;
+    }
+    setMockOtp(res.mockOtp || null);
+    setEmailSent(res.delivery === "email");
   };
 
   const handleVerifyOtp = async () => {
@@ -175,8 +194,13 @@ export default function RegisterPage() {
             <div className="flex flex-col gap-5">
               <div className="border border-cyan-500/30 bg-cyan-500/5 px-4 py-3 text-center">
                 <p className="font-body text-[9px] tracking-[0.25em] text-cyan-400">
-                  OTP SENT TO {email.trim().toUpperCase()}
-                  {phone.trim() ? ` / +91${phone}` : ""}
+                  {emailSent ? "OTP SENT TO YOUR EMAIL" : "CHECK YOUR EMAIL FOR THE OTP"}
+                </p>
+                <p className="mt-1 font-body text-[10px] tracking-[0.15em] text-slate-300">
+                  {email.trim().toUpperCase()}
+                </p>
+                <p className="mt-1 font-body text-[9px] tracking-[0.12em] text-slate-500">
+                  ALSO CHECK SPAM / PROMOTIONS
                 </p>
               </div>
 
@@ -219,6 +243,15 @@ export default function RegisterPage() {
 
               <button type="button" onClick={handleVerifyOtp} disabled={loading} className="btn-primary w-full px-6 py-3.5 font-display text-sm">
                 {loading ? "VERIFYING..." : "VERIFY & ENTER ARENA"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resending || loading}
+                className="btn-ghost w-full px-4 py-3 font-display text-xs"
+              >
+                {resending ? "RESENDING OTP..." : "RESEND OTP TO EMAIL"}
               </button>
 
               <button

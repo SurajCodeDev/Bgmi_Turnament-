@@ -17,7 +17,7 @@ function fromAddress(): string {
   const smtpUser = (process.env.SMTP_USER || "").trim();
   if (process.env.OTP_EMAIL_FROM) return process.env.OTP_EMAIL_FROM;
   if (smtpUser) return `NEXT LEVEL ARENA <${smtpUser}>`;
-  return "NEXT LEVEL ARENA <vaibhavseth020@gmail.com>";
+  return "NEXT LEVEL ARENA <ksuraj138@gmail.com>";
 }
 
 function otpHtml(name: string, otp: string): string {

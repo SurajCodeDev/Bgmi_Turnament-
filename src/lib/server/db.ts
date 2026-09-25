@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { head as blobHead, put as blobPut } from "@vercel/blob";
 import { tournaments as seedTournaments, teams as seedTeams, players as seedPlayers, matches as seedMatches, defaultNotifications, type Tournament, type Notification } from "@/data/arena";
+import { clampPrizeLabel } from "@/lib/arena";
 
 export interface ServerUser {
   id: string;
@@ -255,10 +256,15 @@ function normalizeShape(parsed: unknown): DBShape {
       claimed: !!r.claimed,
       status: (r.status as RegistrationStatus) || (r.claimed ? "PAID" : "PAID"),
     }));
-  merged.tournaments = mergeById(data.tournaments, seedTournaments).map((t) => ({
-    ...t,
-    tag: t.tag || undefined,
-  }));
+  merged.tournaments = mergeById(data.tournaments, seedTournaments).map((t) => {
+    const seed = seedTournaments.find((s) => s.id === t.id);
+    return {
+      ...t,
+      tag: t.tag || undefined,
+      prizePool: seed ? seed.prizePool : clampPrizeLabel(t.prizePool),
+      entryFee: seed ? seed.entryFee : t.entryFee,
+    };
+  });
   merged.payments = (Array.isArray(merged.payments) ? merged.payments : []).filter((p) => !LEGACY_DEMO_IDS.has(p.userId));
   merged.otps = (Array.isArray(merged.otps) ? merged.otps : []).filter((o) => !LEGACY_DEMO_IDS.has(o.userId));
   merged.withdrawals = (Array.isArray(merged.withdrawals) ? merged.withdrawals : []).filter((w) => !LEGACY_DEMO_IDS.has(w.userId));

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
+import { clampPrizeLabel } from "@/lib/arena";
 
 export async function GET() {
   const db = await readDB();
@@ -21,8 +22,8 @@ export async function POST(req: Request) {
     game: "BGMI",
     status: "UPCOMING",
     mode: "SQUAD",
-    prizePool: "₹5,000",
-    entryFee: "₹29",
+    prizePool: "₹2,500",
+    entryFee: "₹19",
     teams: 64,
     teamsJoined: 0,
     date: "01 SEP",
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     image: "/images/bgmi-9.jpg",
     ...body,
   };
+  t.prizePool = clampPrizeLabel(t.prizePool);
   db.tournaments.push(t);
   await writeDB(db);
   return NextResponse.json({ ok: true, tournament: t });
@@ -50,6 +52,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, error: "Tournament not found." }, { status: 404 });
   }
   db.tournaments[idx] = { ...db.tournaments[idx], ...body };
+  db.tournaments[idx].prizePool = clampPrizeLabel(db.tournaments[idx].prizePool);
   await writeDB(db);
   return NextResponse.json({ ok: true, tournament: db.tournaments[idx] });
 }

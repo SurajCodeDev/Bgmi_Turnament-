@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB, type ServerRegistration } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
-import { entryFeeNumber, isFreeTournament, isInviteOnly, squadSizeFor } from "@/lib/arena";
+import { formatINR, isFreeTournament, isInviteOnly, squadSizeFor, totalEntryFee } from "@/lib/arena";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -45,8 +45,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "This tournament is invite-only." }, { status: 403 });
   }
 
-  const fee = entryFeeNumber(t);
   const size = squadSizeFor(t.mode);
+  const fee = totalEntryFee(t);
   const cleanMembers = Array.isArray(members)
     ? members
         .map((m: { name?: string; uid?: string }) => ({
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       db.notifications.push({
         id: `nt-${Date.now()}`,
         type: "PAYMENT",
-        message: `Entry payment of ₹${fee.toLocaleString("en-IN")} for ${t.name} submitted. Awaiting admin verification.`,
+        message: `Entry payment of ${formatINR(fee)} (${size} players) for ${t.name} submitted. Awaiting admin verification.`,
         date: new Date().toISOString().slice(0, 10),
         read: false,
         userId,
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     } else {
       if (user.wallet < fee) {
         return NextResponse.json(
-          { ok: false, error: `Insufficient wallet balance. Entry fee is ₹${fee.toLocaleString("en-IN")}. Add funds first.` },
+          { ok: false, error: `Insufficient wallet balance. Entry is ${formatINR(fee)} for ${size} players. Add funds first.` },
           { status: 400 }
         );
       }
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       db.transactions.push({
         id: `tx-${Date.now()}`,
         userId,
-        label: `Entry Fee — ${t.name}`,
+        label: `Entry Fee (${size} players) — ${t.name}`,
         amount: -fee,
         status: "PAID",
         createdAt: new Date().toISOString(),

@@ -9,7 +9,7 @@ import { TournamentCard } from "@/components/TournamentCard";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
 import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, type ApiRoom } from "@/lib/api";
-import { entryFeeNumber, isFreeTournament, isInviteOnly, prizeNumber, squadSizeFor, formatINR } from "@/lib/arena";
+import { entryFeeNumber, isFreeTournament, isInviteOnly, prizeNumber, squadSizeFor, totalEntryFee, formatINR } from "@/lib/arena";
 
 const statusColor: Record<string, string> = {
   LIVE: "text-red-400 border-red-500/50",
@@ -125,7 +125,8 @@ export default function TournamentDetailPage() {
     );
   }
 
-  const fee = entryFeeNumber(t);
+  const perPlayer = entryFeeNumber(t);
+  const fee = totalEntryFee(t);
   const upiIntent = `upi://pay?pa=${payConfig?.upiId || "ksuraj138@ybl"}&pn=${encodeURIComponent(payConfig?.payeeName || "NEXT LEVEL ARENA")}&am=${fee}&cu=INR&tn=${encodeURIComponent(`Entry ${t.short}`)}`;
 
   const handleRegister = async () => {
@@ -257,7 +258,7 @@ export default function TournamentDetailPage() {
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
               {[
-                { label: "ENTRY FEE", value: isFreeTournament(t) ? "FREE" : t.entryFee },
+                { label: "ENTRY FEE", value: isFreeTournament(t) ? "FREE" : `${t.entryFee} / PLAYER` },
                 { label: "DATE", value: t.date },
                 { label: "TIME", value: t.time },
                 { label: "FORMAT", value: t.format },
@@ -332,13 +333,19 @@ export default function TournamentDetailPage() {
                 <span className="text-slate-200">{t.teamsJoined}/{t.teams}</span>
               </div>
               <div className="flex justify-between">
-                <span>ENTRY FEE</span>
+                <span>ENTRY / PLAYER</span>
                 {isFreeTournament(t) ? (
                   <span className="rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-body text-[9px] font-bold tracking-[0.15em] text-emerald-400">FREE</span>
                 ) : (
                   <span className="text-slate-200">{t.entryFee}</span>
                 )}
               </div>
+              {!isFreeTournament(t) && (
+                <div className="flex justify-between">
+                  <span>TOTAL ({size} PLAYERS)</span>
+                  <span className="text-cyan-400">{formatINR(fee)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>PRIZE POOL</span>
                 <span className="text-cyan-400">{t.prizePool}</span>
@@ -484,7 +491,7 @@ export default function TournamentDetailPage() {
                         <div className="text-center">
                           <p className="font-body text-[8px] font-semibold tracking-[0.25em] text-slate-500">PAY TO THIS UPI ID</p>
                           <p className="break-all font-display text-xs font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
-                          <p className="mt-1 font-body text-[8px] tracking-[0.2em] text-slate-500">PAYEE: {payConfig?.payeeName || "NEXT LEVEL ARENA"} · AMOUNT: {formatINR(fee)}</p>
+                          <p className="mt-1 font-body text-[8px] tracking-[0.2em] text-slate-500">PAYEE: {payConfig?.payeeName || "NEXT LEVEL ARENA"} · AMOUNT: {formatINR(fee)} ({size} × {formatINR(perPlayer)})</p>
                         </div>
                         <a
                           href={upiIntent}
@@ -511,8 +518,12 @@ export default function TournamentDetailPage() {
                     ) : (
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between font-body text-xs text-slate-400">
-                          <span>ENTRY FEE</span>
-                          <span className="font-bold text-slate-200">{formatINR(fee)}</span>
+                          <span>PER PLAYER</span>
+                          <span className="font-bold text-slate-200">{formatINR(perPlayer)}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                          <span>TOTAL ({size} PLAYERS)</span>
+                          <span className="font-bold text-cyan-400">{formatINR(fee)}</span>
                         </div>
                         <div className="flex items-center justify-between font-body text-xs text-slate-400">
                           <span>WALLET BALANCE</span>

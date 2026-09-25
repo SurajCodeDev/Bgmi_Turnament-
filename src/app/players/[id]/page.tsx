@@ -100,9 +100,9 @@ export default function PlayerProfilePage() {
             <h2 className="mb-5 font-display text-sm font-bold tracking-[0.3em] text-white">TOURNAMENT HISTORY</h2>
             <div className="space-y-3">
               {[
-                { event: "BGMI Championship Series", position: "1ST", prize: "₹10,000" },
-                { event: "BGMI Pro League S2", position: "3RD", prize: "₹4,500" },
-                { event: "BGMI Community Clash", position: "1ST", prize: "₹2,000" },
+                { event: "BGMI Championship Series", position: "1ST", prize: "₹1,250" },
+                { event: "BGMI Pro League S2", position: "3RD", prize: "₹500" },
+                { event: "BGMI Community Clash", position: "1ST", prize: "₹500" },
               ].map((t, i) => (
                 <div key={i} className="flex items-center justify-between border border-[#1a2134] bg-[#0a0d16]/60 px-4 py-3">
                   <div>

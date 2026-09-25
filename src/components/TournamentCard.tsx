@@ -118,7 +118,7 @@ export function TournamentCard({
             {t.date} · {t.time}
           </span>
           <span className={`shrink-0 ${isFreeTournament(t) ? "text-emerald-400" : ""}`}>
-            {isFreeTournament(t) ? "FREE ENTRY" : `ENTRY ${t.entryFee}`}
+            {isFreeTournament(t) ? "FREE ENTRY" : `${t.entryFee} / PLAYER`}
           </span>
         </div>
 

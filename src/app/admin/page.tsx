@@ -42,8 +42,8 @@ const emptyTournament: Omit<Tournament, "id"> = {
   game: "BGMI",
   status: "UPCOMING",
   mode: "SQUAD",
-  prizePool: "₹5,000",
-  entryFee: "₹29",
+  prizePool: "₹2,500",
+  entryFee: "₹19",
   teams: 64,
   teamsJoined: 0,
   date: "01 SEP",
@@ -488,7 +488,7 @@ export default function AdminPage() {
                           <p>
                             <span className="text-cyan-400">{t.prizePool}</span>
                           </p>
-                          <p>Entry {t.entryFee}</p>
+                           <p>Entry {t.entryFee} / player</p>
                           <p>
                             {t.teamsJoined}/{t.teams} teams
                           </p>
@@ -543,11 +543,11 @@ export default function AdminPage() {
                           </select>
                         </div>
                         <div>
-                          <label className={labelCls}>PRIZE POOL</label>
+                          <label className={labelCls}>PRIZE POOL (MAX ₹2,500)</label>
                           <input className={inputCls} value={draft.prizePool} onChange={(e) => setDraftField("prizePool", e.target.value)} />
                         </div>
                         <div>
-                          <label className={labelCls}>ENTRY FEE</label>
+                          <label className={labelCls}>ENTRY FEE / PLAYER</label>
                           <input className={inputCls} value={draft.entryFee} onChange={(e) => setDraftField("entryFee", e.target.value)} />
                         </div>
                         <div>
@@ -632,7 +632,7 @@ export default function AdminPage() {
               <motion.div id="admin-create-panel" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="border border-cyan-400/40 bg-[#0a0d16]/80 p-5">
                 <div className="mb-4">
                   <p className="font-display text-sm font-bold text-white">CREATE NEW TOURNAMENT</p>
-                  <p className="mt-1 font-body text-xs text-slate-400">Fill in the details below. Entry fee accepts FREE or INVITE.</p>
+                  <p className="mt-1 font-body text-xs text-slate-400">Prize max ₹2,500. Entry fee is per player (FREE or INVITE also allowed).</p>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -654,11 +654,11 @@ export default function AdminPage() {
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>PRIZE POOL</label>
+                    <label className={labelCls}>PRIZE POOL (MAX ₹2,500)</label>
                     <input className={inputCls} value={createDraft.prizePool} onChange={(e) => setCreateField("prizePool", e.target.value)} />
                   </div>
                   <div>
-                    <label className={labelCls}>ENTRY FEE</label>
+                    <label className={labelCls}>ENTRY FEE / PLAYER</label>
                     <input className={inputCls} value={createDraft.entryFee} onChange={(e) => setCreateField("entryFee", e.target.value)} />
                   </div>
                   <div>

@@ -27,6 +27,14 @@ export function formatINR(n: number): string {
   return "₹" + n.toLocaleString("en-IN");
 }
 
+export const MAX_PRIZE_POOL = 2500;
+
+export function clampPrizeLabel(str: string): string {
+  const n = parseAmount(str);
+  if (!n) return str || formatINR(0);
+  return formatINR(Math.min(n, MAX_PRIZE_POOL));
+}
+
 export function squadSizeFor(mode: string): number {
   switch ((mode || "").toUpperCase()) {
     case "SOLO":
@@ -38,4 +46,10 @@ export function squadSizeFor(mode: string): number {
     default:
       return 4;
   }
+}
+
+export function totalEntryFee(t: Pick<Tournament, "entryFee" | "mode">): number {
+  const per = entryFeeNumber(t);
+  if (!per) return 0;
+  return per * squadSizeFor(t.mode);
 }

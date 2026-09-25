@@ -17,6 +17,7 @@ import {
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
 import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, apiGetPayments, apiGetWithdrawals, type ApiTransaction, type PaymentConfig, type PaymentProof, type Withdrawal } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
+import { ProfileEditor } from "@/components/ProfileEditor";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
@@ -193,14 +194,17 @@ export default function DashboardPage() {
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
           <div className="mb-10 flex flex-col gap-6 border border-[#1a2134] bg-[#0a0d16]/70 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-cyan-400/50 bg-cyan-400/10 font-display text-2xl font-black text-cyan-400 shadow-glow">
-                {user.name.charAt(0).toUpperCase()}
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-cyan-400/50 bg-cyan-400/10 font-display text-2xl font-black text-cyan-400 shadow-glow">
+                {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : user.name.charAt(0).toUpperCase()}
               </div>
               <div>
                 <p className="font-body text-[10px] tracking-[0.25em] text-slate-500">WELCOME BACK, PLAYER</p>
                 <h1 className="font-display text-2xl font-black tracking-wide text-white">{user.name}</h1>
                 <p className="mt-1 font-body text-xs tracking-[0.15em] text-slate-400">
-                  UID {user.uid} · {user.team}
+                  {user.username ? `@${user.username} · ` : ""}UID {user.uid} · {user.team}
+                </p>
+                <p className="mt-1 break-all font-body text-[10px] tracking-[0.12em] text-slate-500">
+                  {user.email || "no email"} · {user.phone || "no mobile"}
                 </p>
               </div>
             </div>
@@ -229,6 +233,10 @@ export default function DashboardPage() {
               <span className="mt-1 font-body text-[10px] font-semibold tracking-[0.3em] text-cyan-400">{s.label}</span>
             </motion.div>
           ))}
+        </div>
+
+        <div className="mb-10">
+          <ProfileEditor />
         </div>
 
         <div className="mb-10 grid gap-6 lg:grid-cols-2">

@@ -20,6 +20,7 @@ export async function GET() {
     wallet: u.wallet,
     emailVerified: u.emailVerified,
     phoneVerified: u.phoneVerified,
+    avatar: u.avatar || "",
     createdAt: u.createdAt,
     transactions: db.transactions
       .filter((t) => t.userId === u.id)

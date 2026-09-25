@@ -6,6 +6,7 @@ import { apiLogin, apiLoginWithIdentifier, apiLogout, apiMe, apiRegister, apiSen
 export interface AuthUser {
   id: string;
   name: string;
+  username?: string;
   email: string;
   phone: string;
   role: "admin" | "player";
@@ -14,6 +15,7 @@ export interface AuthUser {
   wallet: number;
   emailVerified: boolean;
   phoneVerified: boolean;
+  avatar?: string;
 }
 
 interface RegisterResult {
@@ -33,6 +35,7 @@ interface AuthContextType {
   verifyOtp: (identifier: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
   register: (data: { name: string; email: string; phone: string; password: string; uid: string; team: string }) => Promise<RegisterResult>;
   verifyRegistration: (pendingUserId: string, otp: string) => Promise<{ ok: boolean; error?: string }>;
+  setUser: (user: AuthUser | null) => void;
   logout: () => Promise<void>;
 }
 
@@ -99,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, sendOtp, verifyOtp, register, verifyRegistration, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, sendOtp, verifyOtp, register, verifyRegistration, setUser, logout }}>
       {children}
     </AuthContext.Provider>
   );

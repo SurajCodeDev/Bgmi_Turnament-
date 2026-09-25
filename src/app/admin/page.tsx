@@ -23,6 +23,7 @@ import {
   type ApiUser,
 } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
+import { ProfileEditor } from "@/components/ProfileEditor";
 import {
   getTournaments,
   updateTournament,
@@ -70,7 +71,7 @@ export default function AdminPage() {
     rules: [...emptyTournament.rules],
   }));
   const [toast, setToast] = useState("");
-  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations" | "payments" | "withdrawals">("tournaments");
+  const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations" | "payments" | "withdrawals" | "profile">("tournaments");
   const [regFilter, setRegFilter] = useState("");
   const [payments, setPayments] = useState<PaymentProof[]>([]);
   const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string } | null>(null);
@@ -421,7 +422,7 @@ export default function AdminPage() {
 
         <div className="-mx-4 mb-8 overflow-x-auto border-b border-[#1a2134] px-4 sm:mx-0 sm:px-0">
           <div className="flex min-w-max gap-1">
-            {(["overview", "tournaments", "registrations", "payments", "withdrawals", "users", "matches"] as const).map((tb) => (
+            {(["overview", "profile", "tournaments", "registrations", "payments", "withdrawals", "users", "matches"] as const).map((tb) => (
               <button
                 key={tb}
                 onClick={() => setTab(tb)}
@@ -434,6 +435,12 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {tab === "profile" && (
+          <div className="mb-8">
+            <ProfileEditor />
+          </div>
+        )}
 
         {tab === "overview" && (
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -954,8 +961,8 @@ export default function AdminPage() {
                       className="flex w-full flex-col gap-3 p-4 text-left transition-colors hover:bg-[#0e1220]/40 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-lg font-black text-cyan-400">
-                          {u.name.charAt(0).toUpperCase()}
+                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-cyan-400/40 bg-[#0e1220] font-display text-lg font-black text-cyan-400">
+                          {u.avatar ? <img src={u.avatar} alt="" className="h-full w-full object-cover" /> : u.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -963,14 +970,12 @@ export default function AdminPage() {
                             <span className={`rounded-sm border px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] ${u.role === "admin" ? "border-red-500/50 text-red-400" : "border-cyan-400/40 text-cyan-400"}`}>
                               {u.role.toUpperCase()}
                             </span>
-                            {u.username && (
-                              <span className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] text-slate-500">
-                                @{u.username}
-                              </span>
-                            )}
+                            <span className="rounded-sm border border-[#1a2134] px-1.5 py-0.5 font-body text-[8px] tracking-[0.15em] text-slate-500">
+                              @{u.username || "no-username"}
+                            </span>
                           </div>
                           <p className="mt-0.5 break-all font-body text-[10px] tracking-[0.1em] text-slate-500">
-                            {u.email || "—"} · {u.phone || "no mobile"} · UID {u.uid} · {u.team}
+                            {u.email || "no email"} · {u.phone || "no mobile"}
                           </p>
                         </div>
                       </div>

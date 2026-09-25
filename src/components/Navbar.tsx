@@ -131,7 +131,10 @@ export function Navbar() {
                   ADMIN
                 </a>
               )}
-              <a href="/dashboard" data-cursor="PLAYER" className="btn-ghost px-4 py-2 font-body text-xs">
+              <a href={user.role === "admin" ? "/admin" : "/dashboard"} data-cursor="PLAYER" className="btn-ghost flex items-center gap-2 px-4 py-2 font-body text-xs">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
+                ) : null}
                 {user.name}
               </a>
               <button

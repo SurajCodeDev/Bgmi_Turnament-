@@ -38,6 +38,7 @@ export function safeUser(u: ServerUser) {
   return {
     id: u.id,
     name: u.name,
+    username: u.username || "",
     email: u.email,
     phone: u.phone,
     role: u.role,
@@ -46,5 +47,6 @@ export function safeUser(u: ServerUser) {
     wallet: u.wallet,
     emailVerified: u.emailVerified,
     phoneVerified: u.phoneVerified,
+    avatar: u.avatar || "",
   };
 }

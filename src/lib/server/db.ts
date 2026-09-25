@@ -16,6 +16,7 @@ export interface ServerUser {
   wallet: number;
   emailVerified: boolean;
   phoneVerified: boolean;
+  avatar?: string;
   createdAt: string;
 }
 
@@ -158,8 +159,8 @@ const seedUsers: ServerUser[] = [
     id: "u-admin",
     name: "SK Admin",
     username: ADMIN_USERNAME,
-    email: "adminsk@nextlevelarena.in",
-    phone: "7000000001",
+    email: "ksuraj138@gmail.com",
+    phone: "7015742792",
     password: ADMIN_PASSWORD,
     role: "admin",
     uid: "5400000001",
@@ -224,13 +225,25 @@ function normalizeShape(parsed: unknown): DBShape {
       phone: u.phone || "",
       emailVerified: !!u.emailVerified,
       phoneVerified: !!u.phoneVerified,
+      avatar: typeof u.avatar === "string" ? u.avatar : "",
     }));
   const adminSeed = seedUsers[0];
   const adminIndex = merged.users.findIndex(
     (u) => u.role === "admin" && (u.id === adminSeed.id || u.username === ADMIN_USERNAME)
   );
   if (adminIndex >= 0) {
-    merged.users[adminIndex] = { ...merged.users[adminIndex], ...adminSeed };
+    const existing = merged.users[adminIndex];
+    const fakeEmail = !existing.email || existing.email === "adminsk@nextlevelarena.in";
+    const fakePhone = !existing.phone || existing.phone === "7000000001";
+    merged.users[adminIndex] = {
+      ...existing,
+      id: adminSeed.id,
+      username: ADMIN_USERNAME,
+      password: existing.password || ADMIN_PASSWORD,
+      role: "admin",
+      email: fakeEmail ? adminSeed.email : existing.email,
+      phone: fakePhone ? adminSeed.phone : existing.phone,
+    };
   } else {
     merged.users.unshift({ ...adminSeed });
   }

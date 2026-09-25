@@ -13,6 +13,7 @@ export interface ApiUser {
   wallet: number;
   emailVerified: boolean;
   phoneVerified: boolean;
+  avatar?: string;
   createdAt?: string;
   transactions?: ApiTransaction[];
 }
@@ -108,6 +109,27 @@ export async function apiResetPassword(identifier: string, otp: string, password
 
 export async function apiMe() {
   return json<{ ok: boolean; user: ApiUser | null }>("/api/auth/me");
+}
+
+export async function apiUpdateProfile(data: { name?: string; username?: string; team?: string; uid?: string; avatar?: string }) {
+  return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/profile", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function apiSendContactOtp(type: "email" | "phone", value: string) {
+  return json<{ ok: boolean; error?: string; mockOtp?: string | null; delivery?: "email" | "mock"; sentTo?: string }>("/api/profile/contact/send", {
+    method: "POST",
+    body: JSON.stringify({ type, value }),
+  });
+}
+
+export async function apiVerifyContactOtp(type: "email" | "phone", value: string, otp: string) {
+  return json<{ ok: boolean; error?: string; user?: ApiUser }>("/api/profile/contact/verify", {
+    method: "POST",
+    body: JSON.stringify({ type, value, otp }),
+  });
 }
 
 // ---- Tournaments ----

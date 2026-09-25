@@ -15,8 +15,9 @@ import {
   type Registration,
 } from "@/lib/store";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
-import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, apiGetPayments, apiGetWithdrawals, type ApiTransaction, type PaymentConfig, type PaymentProof, type Withdrawal } from "@/lib/api";
+import { apiGetWallet, apiTopUp, apiWithdraw, apiClaimPrize, apiGetPaymentConfig, apiGetPayments, apiGetWithdrawals, apiCreateRazorpayOrder, apiVerifyRazorpay, type ApiTransaction, type PaymentConfig, type PaymentProof, type Withdrawal } from "@/lib/api";
 import { formatINR } from "@/lib/arena";
+import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
 import { ProfileEditor } from "@/components/ProfileEditor";
 
 export default function DashboardPage() {
@@ -110,6 +111,33 @@ export default function DashboardPage() {
     const n = parseInt(topupAmount, 10);
     if (!n || n <= 0) {
       showToast("ENTER A VALID AMOUNT");
+      return;
+    }
+    if (payConfig?.razorpayEnabled) {
+      try {
+        const order = await apiCreateRazorpayOrder({ kind: "TOPUP", amount: n, note: payNote });
+        if (!order.ok) {
+          showToast(order.error || "RAZORPAY START FAILED");
+          return;
+        }
+        const checkout = await openRazorpayCheckout(order);
+        const verified = await apiVerifyRazorpay(checkout);
+        if (verified.ok) {
+          if (typeof verified.wallet === "number") setBalance(verified.wallet);
+          setTopupOpen(false);
+          setLastPayment(verified.payment || null);
+          if (verified.payment) {
+            setPayments((prev) => [verified.payment!, ...prev.filter((p) => p.id !== verified.payment!.id)]);
+          }
+          setTopupAmount("");
+          setPayNote("");
+          showToast("WALLET CREDITED VIA RAZORPAY");
+        } else {
+          showToast(verified.error || "VERIFY FAILED");
+        }
+      } catch (err) {
+        showToast(err instanceof Error ? err.message.toUpperCase() : "PAYMENT CANCELLED");
+      }
       return;
     }
     if (!upiTxnRef.trim()) {
@@ -311,7 +339,7 @@ export default function DashboardPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="holo-panel clip-corner p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENTS</h2>
-              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">UPI STATUS</span>
+              <span className="font-body text-[9px] tracking-[0.2em] text-slate-500">GATEWAY STATUS</span>
             </div>
             {payments.length === 0 ? (
               <p className="py-6 text-center font-body text-xs text-slate-600">NO PAYMENTS YET</p>
@@ -321,7 +349,7 @@ export default function DashboardPage() {
                   <div key={p.id} className="flex items-center justify-between gap-3 border border-[#1a2134] bg-[#0a0d16]/40 px-4 py-2.5">
                     <div className="min-w-0">
                             <p className="font-body text-xs text-slate-300">{p.type === "ENTRY" ? (p.tournamentName || "Entry fee") : "Wallet Top-up"}</p>
-                      <p className="font-body text-[9px] tracking-[0.15em] text-slate-600">{p.upiTxnRef}</p>
+                      <p className="font-body text-[9px] tracking-[0.15em] text-slate-600">{p.method === "RAZORPAY" ? "RAZORPAY" : "UPI"} · {p.razorpayPaymentId || p.upiTxnRef}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="font-display text-xs font-black text-cyan-400">{formatINR(p.amount)}</span>
@@ -474,13 +502,26 @@ export default function DashboardPage() {
               className="holo-panel scanline clip-corner w-full max-w-sm p-6"
             >
               <p className="mb-1 font-display text-sm font-bold tracking-[0.3em] text-white">ADD FUNDS</p>
-              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">PAY VIA UPI AND WE CREDIT YOUR WALLET</p>
+              <p className="mb-4 font-body text-[10px] tracking-[0.2em] text-slate-500">
+                {payConfig?.razorpayEnabled
+                  ? "PAY VIA RAZORPAY · SETTLES TO ORGANIZER BANK"
+                  : "PAY VIA UPI AND WE CREDIT YOUR WALLET"}
+              </p>
 
+              {payConfig?.razorpayEnabled ? (
+                <div className="mb-4 border border-cyan-400/40 bg-cyan-400/5 p-4">
+                  <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">RAZORPAY CHECKOUT</p>
+                  <p className="mt-2 font-body text-[11px] leading-relaxed text-slate-400">
+                    UPI, cards aur netbanking. Paisa organizer ke Razorpay-linked bank account mein settle hota hai. Instant wallet credit.
+                  </p>
+                </div>
+              ) : (
               <div className="mb-4 border border-cyan-400/40 bg-cyan-400/5 p-4">
                 <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">PAY TO THIS UPI ID</p>
                 <p className="mt-1 break-all font-display text-sm font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
                 <p className="mt-1 font-body text-[9px] tracking-[0.2em] text-slate-500">PAYEE: {payConfig?.payeeName || "NEXT LEVEL ARENA"}</p>
               </div>
+              )}
 
               <input
                 type="number"
@@ -502,6 +543,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="mt-4 flex flex-col gap-2">
+                {!payConfig?.razorpayEnabled && (
                 <input
                   type="text"
                   value={upiTxnRef}
@@ -509,17 +551,20 @@ export default function DashboardPage() {
                   placeholder="UPI Transaction Ref (required)"
                   className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-2.5 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
                 />
+                )}
                 <input
                   type="text"
                   value={payNote}
                   onChange={(e) => setPayNote(e.target.value)}
-                  placeholder="Note for admin (optional)"
+                  placeholder="Note (optional)"
                   className="w-full border border-[#1a2134] bg-[#0a0d16] px-4 py-2.5 font-body text-xs text-white outline-none transition-colors placeholder:text-slate-600 focus:border-cyan-400/60"
                 />
               </div>
 
               <button onClick={handleTopup} className="btn-primary mt-5 w-full px-4 py-3 font-display text-xs">
-                I HAVE PAID {topupAmount ? `₹${topupAmount}` : ""} VIA UPI
+                {payConfig?.razorpayEnabled
+                  ? `PAY ${topupAmount ? `₹${topupAmount}` : ""} VIA RAZORPAY`
+                  : `I HAVE PAID ${topupAmount ? `₹${topupAmount}` : ""} VIA UPI`}
               </button>
             </motion.div>
           </motion.div>
@@ -584,19 +629,19 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <p className="mb-4 font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENT PROOF</p>
+              <p className="mb-4 font-display text-sm font-bold tracking-[0.3em] text-white">PAYMENT RECEIPT</p>
               <div className="space-y-2 border border-[#1a2134] bg-[#0a0d16]/60 p-4 font-body text-xs text-slate-300">
                 <div className="flex justify-between">
                   <span className="text-slate-500">AMOUNT</span>
                   <span className="font-bold text-cyan-400">{formatINR(lastPayment.amount)}</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="shrink-0 text-slate-500">PAID TO</span>
-                  <span className="break-all text-right">{lastPayment.upiId}</span>
+                  <span className="shrink-0 text-slate-500">METHOD</span>
+                  <span className="text-right">{lastPayment.method === "RAZORPAY" ? "RAZORPAY" : "UPI"}</span>
                 </div>
                 <div className="flex justify-between gap-4">
                   <span className="shrink-0 text-slate-500">TXN REF</span>
-                  <span className="text-right">{lastPayment.upiTxnRef}</span>
+                  <span className="break-all text-right">{lastPayment.razorpayPaymentId || lastPayment.upiTxnRef}</span>
                 </div>
                 {lastPayment.note && (
                   <div className="flex justify-between gap-4">
@@ -610,18 +655,25 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <p className="mt-4 border-l-2 border-cyan-400/60 bg-[#0a0d16]/40 px-4 py-3 font-body text-[11px] leading-relaxed text-slate-400">
-                Aapka payment proof ready hai. Niche button dabao to payment proof WhatsApp par admin (7015742792) ko bheja jayega.
-              </p>
-
-              <a
-                href={whatsappLink(lastPayment)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 font-display text-xs"
-              >
-                SEND PAYMENT PROOF ON WHATSAPP
-              </a>
+              {lastPayment.method === "RAZORPAY" ? (
+                <p className="mt-4 border-l-2 border-cyan-400/60 bg-[#0a0d16]/40 px-4 py-3 font-body text-[11px] leading-relaxed text-slate-400">
+                  Razorpay ne payment capture kar liya. Paisa organizer ke linked bank account mein settle hoga.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-4 border-l-2 border-cyan-400/60 bg-[#0a0d16]/40 px-4 py-3 font-body text-[11px] leading-relaxed text-slate-400">
+                    Aapka payment proof ready hai. Niche button dabao to payment proof WhatsApp par admin (7015742792) ko bheja jayega.
+                  </p>
+                  <a
+                    href={whatsappLink(lastPayment)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 font-display text-xs"
+                  >
+                    SEND PAYMENT PROOF ON WHATSAPP
+                  </a>
+                </>
+              )}
               <button onClick={() => setLastPayment(null)} className="btn-ghost mt-2 w-full px-4 py-2.5 font-display text-[10px]">
                 CLOSE
               </button>

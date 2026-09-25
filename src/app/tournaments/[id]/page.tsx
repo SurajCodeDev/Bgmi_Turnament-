@@ -8,8 +8,9 @@ import { getTournament, getTournaments, getRegistrations, isRegistered, register
 import { TournamentCard } from "@/components/TournamentCard";
 import { useAuth } from "@/context/AuthContext";
 import { useStoreRefresh } from "@/lib/useStoreRefresh";
-import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, type ApiRoom } from "@/lib/api";
+import { apiGetWallet, apiTopUp, apiGetPaymentConfig, apiGetRoom, apiCreateRazorpayOrder, apiVerifyRazorpay, type ApiRoom, type PaymentConfig } from "@/lib/api";
 import { entryFeeNumber, isFreeTournament, isInviteOnly, prizeNumber, squadSizeFor, totalEntryFee, formatINR } from "@/lib/arena";
+import { openRazorpayCheckout } from "@/lib/razorpayCheckout";
 
 const statusColor: Record<string, string> = {
   LIVE: "text-red-400 border-red-500/50",
@@ -30,10 +31,10 @@ export default function TournamentDetailPage() {
   const [wallet, setWallet] = useState<number | null>(null);
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
-  const [payMethod, setPayMethod] = useState<"upi" | "wallet">("wallet");
+  const [payMethod, setPayMethod] = useState<"razorpay" | "upi" | "wallet">("wallet");
   const [upiTxnRef, setUpiTxnRef] = useState("");
   const [upiNote, setUpiNote] = useState("");
-  const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string; payeeName: string } | null>(null);
+  const [payConfig, setPayConfig] = useState<PaymentConfig | null>(null);
   const [room, setRoom] = useState<ApiRoom | null>(null);
   const [form, setForm] = useState({
     playerName: user?.name ?? "",
@@ -86,7 +87,10 @@ export default function TournamentDetailPage() {
 
   useEffect(() => {
     apiGetPaymentConfig()
-      .then(setPayConfig)
+      .then((c) => {
+        setPayConfig(c);
+        if (c.razorpayEnabled) setPayMethod("razorpay");
+      })
       .catch(() => {});
   }, []);
 
@@ -159,11 +163,42 @@ export default function TournamentDetailPage() {
         return;
       }
     }
+    if (!isFreeTournament(t) && payMethod === "razorpay") {
+      setBusy(true);
+      try {
+        const order = await apiCreateRazorpayOrder({
+          kind: "ENTRY",
+          tournamentId: t.id,
+          ...form,
+          members: filledMembers,
+        });
+        if (!order.ok) {
+          alert(order.error || "Could not start Razorpay checkout.");
+          return;
+        }
+        const checkout = await openRazorpayCheckout(order);
+        const verified = await apiVerifyRazorpay(checkout);
+        if (!verified.ok) {
+          alert(verified.error || "Payment verification failed.");
+          return;
+        }
+        await refreshRegistrations(user.id);
+        setRegistered(true);
+        setRegStatus(verified.payment?.status === "VERIFIED" ? "PAID" : "PENDING");
+        setT(getTournament(t.id));
+        if (typeof verified.wallet === "number") setWallet(verified.wallet);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Payment cancelled.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     setBusy(true);
     const res = await registerForTournament(user.id, t.id, {
       ...form,
       members: filledMembers,
-      paymentMethod: isFreeTournament(t) ? "wallet" : payMethod,
+      paymentMethod: isFreeTournament(t) ? "wallet" : payMethod === "upi" ? "upi" : "wallet",
       upiTxnRef: payMethod === "upi" ? upiTxnRef : undefined,
       note: payMethod === "upi" ? upiNote : undefined,
     });
@@ -182,6 +217,28 @@ export default function TournamentDetailPage() {
     const n = parseInt(topupAmount, 10);
     if (!n || n <= 0) {
       alert("Enter a valid amount.");
+      return;
+    }
+    if (payConfig?.razorpayEnabled) {
+      try {
+        const order = await apiCreateRazorpayOrder({ kind: "TOPUP", amount: n, note: upiNote });
+        if (!order.ok) {
+          alert(order.error || "Could not start Razorpay checkout.");
+          return;
+        }
+        const checkout = await openRazorpayCheckout(order);
+        const verified = await apiVerifyRazorpay(checkout);
+        if (verified.ok) {
+          setTopupOpen(false);
+          setTopupAmount("");
+          if (typeof verified.wallet === "number") setWallet(verified.wallet);
+          alert(`Wallet credited ${formatINR(n)} via Razorpay.`);
+        } else {
+          alert(verified.error || "Payment verification failed.");
+        }
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Payment cancelled.");
+      }
       return;
     }
     if (!upiTxnRef.trim()) {
@@ -392,7 +449,7 @@ export default function TournamentDetailPage() {
                 )}
                 {regStatus === "PENDING" && (
                   <p className="font-body text-[10px] leading-relaxed tracking-[0.1em] text-slate-500">
-                    Aapka entry payment verification mein hai. Admin verify karte hi aapko tournament mein add kar diya jayega. WhatsApp par proof bhejna na bhoolen.
+                    Aapka entry payment verification mein hai. Razorpay payment auto-verify hota hai. Manual UPI ke liye admin verify karega.
                   </p>
                 )}
                 <button onClick={handleUnregister} disabled={busy} className="btn-ghost w-full px-4 py-3 font-display text-[11px]">
@@ -466,7 +523,17 @@ export default function TournamentDetailPage() {
                 {!isFreeTournament(t) && (
                   <div className="flex flex-col gap-3 border border-[#1a2134] bg-[#05060a]/60 p-4">
                     <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">STEP 3 · ENTRY FEE</p>
-                    <div className="mb-1 grid grid-cols-2 gap-2">
+                    <div className={`mb-1 grid gap-2 ${payConfig?.razorpayEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+                      {payConfig?.razorpayEnabled && (
+                        <button
+                          onClick={() => setPayMethod("razorpay")}
+                          className={`border px-3 py-2 font-body text-[10px] font-semibold tracking-[0.15em] transition-colors ${
+                            payMethod === "razorpay" ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-400" : "border-[#1a2134] text-slate-500 hover:text-slate-300"
+                          }`}
+                        >
+                          RAZORPAY
+                        </button>
+                      )}
                       <button
                         onClick={() => setPayMethod("upi")}
                         className={`border px-3 py-2 font-body text-[10px] font-semibold tracking-[0.15em] transition-colors ${
@@ -485,7 +552,21 @@ export default function TournamentDetailPage() {
                       </button>
                     </div>
 
-                    {payMethod === "upi" ? (
+                    {payMethod === "razorpay" ? (
+                      <div className="flex flex-col gap-2 border border-[#1a2134] bg-[#0a0d16]/50 p-4">
+                        <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                          <span>PER PLAYER</span>
+                          <span className="font-bold text-slate-200">{formatINR(perPlayer)}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-body text-xs text-slate-400">
+                          <span>TOTAL ({size} PLAYERS)</span>
+                          <span className="font-bold text-cyan-400">{formatINR(fee)}</span>
+                        </div>
+                        <p className="font-body text-[9px] leading-relaxed tracking-[0.1em] text-slate-500">
+                          UPI, cards aur netbanking Razorpay se. Paisa organizer ke bank account mein settle hota hai. Instant verify.
+                        </p>
+                      </div>
+                    ) : payMethod === "upi" ? (
                       <div className="flex flex-col items-center gap-3 border border-[#1a2134] bg-[#0a0d16]/50 p-4">
                         <QRCodeSVG value={upiIntent} size={150} bgColor="#05060a" fgColor="#22d3ee" level="M" />
                         <div className="text-center">
@@ -557,6 +638,8 @@ export default function TournamentDetailPage() {
                     ? "TOURNAMENT OVER"
                     : isFreeTournament(t)
                     ? "CONFIRM FREE ENTRY"
+                    : payMethod === "razorpay"
+                    ? `PAY ${formatINR(fee)} VIA RAZORPAY`
                     : payMethod === "upi"
                     ? "I HAVE PAID VIA UPI — SUBMIT"
                     : wallet !== null && wallet < fee
@@ -582,7 +665,7 @@ export default function TournamentDetailPage() {
 
             {topupOpen && (
               <div className="mt-4 border border-cyan-400/40 bg-[#05060a] p-4">
-                <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">ADD FUNDS VIA UPI</p>
+                <p className="mb-3 font-body text-[9px] font-semibold tracking-[0.25em] text-cyan-400">{payConfig?.razorpayEnabled ? "ADD FUNDS VIA RAZORPAY" : "ADD FUNDS VIA UPI"}</p>
                 <div className="flex gap-2">
                   <input
                     type="number"

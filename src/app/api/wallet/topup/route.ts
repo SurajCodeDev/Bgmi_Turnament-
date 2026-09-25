@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     status: "PENDING VERIFICATION",
     createdAt: new Date().toISOString(),
     type: "TOPUP" as const,
+    method: "UPI" as const,
   };
   db.payments.push(payment);
   db.notifications.push({

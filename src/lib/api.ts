@@ -206,8 +206,11 @@ export interface PaymentProof {
   status: string;
   createdAt: string;
   type?: "TOPUP" | "ENTRY";
+  method?: "UPI" | "RAZORPAY" | "WALLET";
   tournamentId?: string;
   tournamentName?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   verifyRemarks?: string;
   verifiedAt?: string;
   verifiedBy?: string;
@@ -246,6 +249,7 @@ export interface PaymentConfig {
   upiId: string;
   whatsappNumber: string;
   payeeName: string;
+  razorpayEnabled?: boolean;
 }
 
 export async function apiGetWallet() {
@@ -290,6 +294,48 @@ export async function apiProcessPayment(id: string, action: "verify" | "reject",
     method: "PUT",
     body: JSON.stringify({ action, remarks }),
   });
+}
+
+export interface RazorpayOrderResponse {
+  ok: boolean;
+  error?: string;
+  keyId: string;
+  orderId: string;
+  amount: number;
+  amountPaise: number;
+  currency: string;
+  paymentId: string;
+  name: string;
+  description: string;
+  prefill: { name?: string; email?: string; contact?: string };
+}
+
+export async function apiCreateRazorpayOrder(body: {
+  kind: "TOPUP" | "ENTRY";
+  amount?: number;
+  note?: string;
+  tournamentId?: string;
+  playerName?: string;
+  playerUid?: string;
+  playerEmail?: string;
+  teamName?: string;
+  members?: { name: string; uid: string }[];
+}) {
+  return json<RazorpayOrderResponse>("/api/razorpay/order", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiVerifyRazorpay(body: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}) {
+  return json<{ ok: boolean; error?: string; payment?: PaymentProof; wallet?: number; verified?: boolean }>(
+    "/api/razorpay/verify",
+    { method: "POST", body: JSON.stringify(body) }
+  );
 }
 
 // ---- Matches ----

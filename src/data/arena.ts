@@ -758,7 +758,7 @@ export const bracket: BracketRound[] = [
 export const faqs = [
   {
     q: "How do I register for a tournament?",
-    a: "Create a free account, open any tournament page and click JOIN TOURNAMENT. Entry fee is charged per player (squad of 4 = 4 × fee). Pay via wallet or UPI to confirm your slot.",
+    a: "Create a free account, open any tournament page and click JOIN TOURNAMENT. Entry fee is charged per player (squad of 4 = 4 × fee). Pay via Razorpay (UPI/cards/netbanking to organizer bank), wallet, or manual UPI.",
   },
   {
     q: "What is the scoring system?",

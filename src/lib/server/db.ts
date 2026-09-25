@@ -49,8 +49,11 @@ export interface ServerPayment {
   status: string;
   createdAt: string;
   type?: "TOPUP" | "ENTRY";
+  method?: "UPI" | "RAZORPAY" | "WALLET";
   tournamentId?: string;
   tournamentName?: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   verifyRemarks?: string;
   verifiedAt?: string;
   verifiedBy?: string;
@@ -75,7 +78,7 @@ export interface ServerRoom {
   updatedAt: string;
 }
 
-interface DBShape {
+export interface DBShape {
   tournaments: Tournament[];
   users: ServerUser[];
   registrations: ServerRegistration[];

@@ -74,7 +74,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<"tournaments" | "overview" | "users" | "matches" | "registrations" | "payments" | "withdrawals" | "profile">("tournaments");
   const [regFilter, setRegFilter] = useState("");
   const [payments, setPayments] = useState<PaymentProof[]>([]);
-  const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string } | null>(null);
+  const [payConfig, setPayConfig] = useState<{ upiId: string; whatsappNumber: string; razorpayEnabled?: boolean } | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [users, setUsers] = useState<ApiUser[]>([]);
@@ -811,7 +811,12 @@ export default function AdminPage() {
           <div className="space-y-4">
             <div className="holo-panel clip-corner flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">YOUR UPI DETAILS</p>
+                <p className="font-body text-[9px] font-semibold tracking-[0.25em] text-slate-500">
+                  {payConfig?.razorpayEnabled ? "RAZORPAY + UPI COLLECT" : "YOUR UPI DETAILS"}
+                </p>
+                {payConfig?.razorpayEnabled && (
+                  <p className="mt-1 font-display text-sm font-black text-emerald-400">RAZORPAY LIVE · BANK SETTLEMENT ON</p>
+                )}
                 <p className="mt-1 break-all font-display text-sm font-black text-cyan-400">{payConfig?.upiId || "ksuraj138@ybl"}</p>
                 <p className="mt-1 font-body text-[9px] tracking-[0.2em] text-slate-500">PAYMENT PROOF WHATSAPP: +{payConfig?.whatsappNumber || "917015742792"}</p>
               </div>
@@ -850,7 +855,7 @@ export default function AdminPage() {
                           <div>
                             <p className="font-body text-sm font-semibold text-slate-200">{p.userName}</p>
                             <p className="font-body text-[10px] tracking-[0.15em] text-slate-500">
-                              {formatINR(p.amount)} · {p.upiTxnRef} · {new Date(p.createdAt).toLocaleString("en-IN")}
+                              {formatINR(p.amount)} · {p.method === "RAZORPAY" ? "RAZORPAY" : "UPI"} · {p.razorpayPaymentId || p.upiTxnRef} · {new Date(p.createdAt).toLocaleString("en-IN")}
                             </p>
                           </div>
                         </div>
@@ -873,8 +878,10 @@ export default function AdminPage() {
                         <a href={waLink} target="_blank" rel="noopener noreferrer" className="btn-primary min-h-10 px-4 py-2 text-center font-display text-[10px]">
                           VIEW / FORWARD ON WHATSAPP
                         </a>
-                        <span className="break-all font-body text-[9px] tracking-[0.15em] text-slate-600">PAID TO {p.upiId}</span>
-                        {p.status === "PENDING VERIFICATION" && (
+                        <span className="break-all font-body text-[9px] tracking-[0.15em] text-slate-600">
+                          {p.method === "RAZORPAY" ? "RAZORPAY ORDER" : `PAID TO ${p.upiId}`}
+                        </span>
+                        {p.status === "PENDING VERIFICATION" && p.method !== "RAZORPAY" && (
                           <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex">
                             <button onClick={() => verifyPayment(p.id, "verify")} className="min-h-10 border border-emerald-500/50 px-4 py-2 font-display text-[10px] text-emerald-400 transition-colors hover:bg-emerald-500/10">
                               VERIFY

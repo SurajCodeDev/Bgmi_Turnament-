@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/server/db";
 import { getSessionUser } from "@/lib/server/auth";
+import { fulfillVerifiedPayment } from "@/lib/server/fulfillPayment";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,52 +18,13 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   if (action === "verify") {
-    pay.status = "VERIFIED";
-    pay.verifyRemarks = String(remarks || "").trim();
-    pay.verifiedAt = new Date().toISOString();
-    pay.verifiedBy = admin.name;
-
-    const user = db.users.find((u) => u.id === pay.userId);
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Payer account not found." }, { status: 404 });
+    if (pay.status === "VERIFIED") {
+      return NextResponse.json({ ok: true, payment: pay });
     }
-
-    if (pay.type === "ENTRY" && pay.tournamentId) {
-      const reg = db.registrations.find(
-        (r) => r.userId === pay.userId && r.tournamentId === pay.tournamentId && r.paymentId === pay.id
-      );
-      if (reg) {
-        reg.status = "PAID";
-        const t = db.tournaments.find((x) => x.id === pay.tournamentId);
-        if (t && t.teamsJoined < t.teams) t.teamsJoined += 1;
-        db.notifications.push({
-          id: `nt-${Date.now()}`,
-          type: "PAYMENT",
-          message: `Your entry payment for ${pay.tournamentName || "the tournament"} is verified. You are now registered!`,
-          date: new Date().toISOString().slice(0, 10),
-          read: false,
-          userId: pay.userId,
-        });
-      }
-    } else {
-      // Top-up verification credits the wallet
-      user.wallet += pay.amount;
-      db.transactions.push({
-        id: `tx-${Date.now()}`,
-        userId: pay.userId,
-        label: "Wallet Top-up (UPI)",
-        amount: pay.amount,
-        status: "CREDITED",
-        createdAt: new Date().toISOString(),
-      });
-      db.notifications.push({
-        id: `nt-${Date.now()}`,
-        type: "PAYMENT",
-        message: `Your UPI payment of ₹${pay.amount.toLocaleString("en-IN")} was verified. Wallet credited!`,
-        date: new Date().toISOString().slice(0, 10),
-        read: false,
-        userId: pay.userId,
-      });
+    pay.verifyRemarks = String(remarks || "").trim();
+    const ok = fulfillVerifiedPayment(db, pay, admin.name);
+    if (!ok && pay.status !== "VERIFIED") {
+      return NextResponse.json({ ok: false, error: "Payer account not found." }, { status: 404 });
     }
   } else if (action === "reject") {
     pay.status = "REJECTED";

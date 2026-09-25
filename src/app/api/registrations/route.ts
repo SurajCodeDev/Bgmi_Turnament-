@@ -92,6 +92,7 @@ export async function POST(req: Request) {
         status: "PENDING VERIFICATION",
         createdAt: new Date().toISOString(),
         type: "ENTRY" as const,
+        method: "UPI" as const,
         tournamentId,
         tournamentName: t.name,
       };
